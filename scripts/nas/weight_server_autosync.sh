@@ -82,6 +82,7 @@ docker run -d --name "$CONTAINER_NAME" --restart unless-stopped \
     -p "$HOST_PORT:3000" \
     -e "JWT_SECRET=$SECRET" \
     -v "$APP_DIR/data:/data" \
+    -v /volume2/docker/giliconcloude_key.txt:/data/giliconcloude_key.txt:ro \
     "$IMAGE" >> "$LOG" 2>&1 || { log "FAIL: docker run 失败"; exit 1; }
 
 # 5. 记录

@@ -1,11 +1,19 @@
 import http from 'http';
 import { URL } from 'url';
+import fs from 'fs';
+import crypto from 'crypto';
+import { join } from 'path';
 import bcrypt from 'bcryptjs';
-import db from './db.js';
+import db, { DATA_DIR } from './db.js';
 import { sign, verify } from './auth.js';
+import { recognizeFood, ocrNutrition } from './ai.js';
 
 const PORT = process.env.PORT || 3000;
 const BCRYPT_ROUNDS = 10;
+
+// 图片上传目录（存食物照片）
+const UPLOAD_DIR = join(DATA_DIR, 'uploads');
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // ---- 通用工具 ----
 function json(res, status, data) {
@@ -155,9 +163,10 @@ route('DELETE', '/weights/:date', (req, res) => {
 // ---- 饮食 ----
 route('GET', '/meals', (req, res) => {
   const date = req.query.get('date') || null;
+  const cols = 'id,date,type,content,kcal,protein_g,fat_g,carbs_g,image_url';
   const rows = date
-    ? db.prepare('SELECT id,date,type,content FROM meals WHERE user_id=? AND date=? ORDER BY id').all(req.user.id, toDate(date))
-    : db.prepare('SELECT id,date,type,content FROM meals WHERE user_id=? ORDER BY date DESC, id DESC').all(req.user.id);
+    ? db.prepare(`SELECT ${cols} FROM meals WHERE user_id=? AND date=? ORDER BY id`).all(req.user.id, toDate(date))
+    : db.prepare(`SELECT ${cols} FROM meals WHERE user_id=? ORDER BY date DESC, id DESC`).all(req.user.id);
   json(res, 200, { items: rows });
 }, true);
 
@@ -168,9 +177,14 @@ route('POST', '/meals', async (req, res) => {
   const type = ['breakfast', 'lunch', 'dinner', 'snack'].includes(b.type) ? b.type : 'snack';
   const content = String(b.content || '').trim();
   if (!content) return json(res, 400, { error: '内容不能为空' });
-  const info = db.prepare('INSERT INTO meals (user_id,date,type,content,created_at) VALUES (?,?,?,?,?)')
-    .run(req.user.id, date, type, content.slice(0, 500), Date.now());
-  const row = db.prepare('SELECT id,date,type,content FROM meals WHERE id=?').get(info.lastInsertRowid);
+  const num = (v) => (v === null || v === undefined || v === '' ? null : +v);
+  const kcal = num(b.kcal), protein_g = num(b.protein_g), fat_g = num(b.fat_g), carbs_g = num(b.carbs_g);
+  const image_url = String(b.image_url || '').slice(0, 500) || null;
+  const info = db.prepare(`INSERT INTO meals (user_id,date,type,content,kcal,protein_g,fat_g,carbs_g,image_url,created_at)
+                          VALUES (?,?,?,?,?,?,?,?,?,?)`)
+    .run(req.user.id, date, type, content.slice(0, 500), kcal, protein_g, fat_g, carbs_g, image_url, Date.now());
+  const row = db.prepare('SELECT id,date,type,content,kcal,protein_g,fat_g,carbs_g,image_url FROM meals WHERE id=?')
+    .get(info.lastInsertRowid);
   json(res, 201, { item: row });
 }, true);
 
@@ -178,6 +192,52 @@ route('DELETE', '/meals/:id', (req, res) => {
   const info = db.prepare('DELETE FROM meals WHERE id=? AND user_id=?').run(+req.params.id, req.user.id);
   if (info.changes === 0) return json(res, 404, { error: '记录不存在' });
   json(res, 200, { ok: true });
+}, true);
+
+// ---- 食物识图 / 配料表 OCR ----
+function bodyImage(b) {
+  return String(b.image_base64 || b.image || '').replace(/^data:image\/\w+;base64,/, '');
+}
+
+route('POST', '/foods/recognize', async (req, res) => {
+  const b = await readBody(req);
+  const img = bodyImage(b);
+  if (!img) return json(res, 400, { error: '缺少图片（image_base64）' });
+  try {
+    const r = await recognizeFood(img);
+    json(res, 200, r);
+  } catch (e) {
+    console.error('[ai] recognizeFood 失败:', e.message);
+    json(res, 502, { error: e.message || '识别失败' });
+  }
+}, true);
+
+route('POST', '/foods/ocr', async (req, res) => {
+  const b = await readBody(req);
+  const img = bodyImage(b);
+  if (!img) return json(res, 400, { error: '缺少图片（image_base64）' });
+  try {
+    const r = await ocrNutrition(img);
+    json(res, 200, r);
+  } catch (e) {
+    console.error('[ai] ocrNutrition 失败:', e.message);
+    json(res, 502, { error: e.message || '识别失败' });
+  }
+}, true);
+
+// ---- 图片上传（食物照片落盘，返回 URL）----
+route('POST', '/upload', async (req, res) => {
+  const b = await readBody(req);
+  const img = bodyImage(b);
+  if (!img) return json(res, 400, { error: '缺少图片（image_base64）' });
+  const ext = String(b.ext || 'jpg').replace(/[^a-z0-9]/gi, '').slice(0, 4) || 'jpg';
+  const name = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}.${ext}`;
+  try {
+    fs.writeFileSync(join(UPLOAD_DIR, name), Buffer.from(img, 'base64'));
+  } catch (e) {
+    return json(res, 500, { error: '图片保存失败' });
+  }
+  json(res, 200, { url: `/uploads/${name}` });
 }, true);
 
 // ---- 批量导入（Excel/CSV 已在客户端解析成 JSON 数组）----
@@ -215,9 +275,31 @@ const server = http.createServer(async (req, res) => {
   catch { return json(res, 400, { error: 'bad url' }); }
 
   const pathname = url.pathname;
+
+  // 兼容 /api 前缀（iOS 端带 apiPrefix="/api"，后端路由不带）
+  let apiPath = pathname;
+  if (apiPath.startsWith('/api/')) apiPath = apiPath.slice('/api'.length);
+  else if (apiPath === '/api') apiPath = '/';
+
+  // 静态：食物图片（/uploads/<file>）
+  if (pathname.startsWith('/uploads/')) {
+    const file = pathname.slice('/uploads/'.length);
+    if (file.includes('..') || file.includes('/') || file.includes('\\')) {
+      return json(res, 400, { error: 'bad path' });
+    }
+    const fp = join(UPLOAD_DIR, file);
+    if (!fs.existsSync(fp)) return json(res, 404, { error: 'not found' });
+    const ext = (file.split('.').pop() || '').toLowerCase();
+    const types = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
+    const data = fs.readFileSync(fp);
+    res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream', 'Content-Length': data.length });
+    res.end(data);
+    return;
+  }
+
   for (const r of routes) {
     if (r.method !== req.method) continue;
-    const params = match(r.pattern, pathname);
+    const params = match(r.pattern, apiPath);
     if (!params) continue;
     req.query = url.searchParams;
     if (r.auth) {

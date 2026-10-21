@@ -32,6 +32,11 @@ struct MealRecord: Identifiable, Codable, Equatable {
     var date: String
     var type: String      // breakfast/lunch/dinner/snack
     var content: String
+    var kcal: Double?       // 卡路里（拍照识别时填）
+    var protein_g: Double?
+    var fat_g: Double?
+    var carbs_g: Double?
+    var image_url: String?
 
     var typeName: String {
         switch type {
@@ -40,6 +45,12 @@ struct MealRecord: Identifiable, Codable, Equatable {
         case "dinner": return "晚餐"
         default: return "加餐"
         }
+    }
+
+    /// 卡路里展示（无则为空）
+    var kcalText: String {
+        guard let k = kcal, k > 0 else { return "" }
+        return "\(Int(k.rounded())) 千卡"
     }
 }
 

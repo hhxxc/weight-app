@@ -6,6 +6,8 @@ struct MealListView: View {
 
     @State private var selectedDate = Date()
     @State private var showAdd = false
+    @State private var showFoodRecognize = false
+    @State private var showNutritionOCR = false
 
     private var dateStr: String { WeightRecord.dateFormatter.string(from: selectedDate) }
     private var dayMeals: [MealRecord] {
@@ -54,8 +56,15 @@ struct MealListView: View {
                                     .padding(.vertical, 4)
                                     .background(typeColor(m.type))
                                     .cornerRadius(8)
-                                Text(m.content)
-                                    .font(.body)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(m.content)
+                                        .font(.body)
+                                    if !m.kcalText.isEmpty {
+                                        Text(m.kcalText)
+                                            .font(.caption)
+                                            .foregroundColor(.accentColor)
+                                    }
+                                }
                                 Spacer()
                             }
                             .padding(.vertical, 4)
@@ -68,11 +77,23 @@ struct MealListView: View {
             .navigationTitle("饮食")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { showAdd = true } label: { Image(systemName: "plus") }
+                    Menu {
+                        Button { showAdd = true } label: { Label("手动记录", systemImage: "square.and.pencil") }
+                        Button { showFoodRecognize = true } label: { Label("拍照识图", systemImage: "camera") }
+                        Button { showNutritionOCR = true } label: { Label("拍配料表", systemImage: "text.viewfinder") }
+                    } label: {
+                        Image(systemName: "plus")
+                    }
                 }
             }
             .sheet(isPresented: $showAdd) {
                 MealEditView(dateStr: dateStr)
+            }
+            .sheet(isPresented: $showFoodRecognize) {
+                FoodRecognizeView(dateStr: dateStr)
+            }
+            .sheet(isPresented: $showNutritionOCR) {
+                NutritionOCRView(dateStr: dateStr)
             }
             .onChange(of: dateStr) { _ in
                 Task { await state.refreshMeals(date: dateStr) }

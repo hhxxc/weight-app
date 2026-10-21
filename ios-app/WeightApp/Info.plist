@@ -38,5 +38,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<!-- 拍照识图 / 拍配料表需要相机与相册权限 -->
+	<key>NSCameraUsageDescription</key>
+	<string>用于拍摄食物或配料表照片，识别并计算卡路里</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>用于从相册选择食物或配料表照片</string>
 </dict>
 </plist>

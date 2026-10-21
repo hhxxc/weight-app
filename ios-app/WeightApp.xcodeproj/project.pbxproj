@@ -12,14 +12,17 @@
 		f6b11089bd575eb4bc4abf1b /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3bca249f98bb5d1dae799d85 /* AppLogger.swift */; };
 		fbd329219a805f53aba3fd5c /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = e9c778254ec9558198dc3f88 /* AppState.swift */; };
 		3ceb13d339c8527eb71456b4 /* ColorHex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0e7af03167a05bbba2fcb644 /* ColorHex.swift */; };
+		e28017fbba4855a7972f4a44 /* ImageUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = f628b9d4a8fc592190109a5a /* ImageUtil.swift */; };
 		7f17715cecf55b9ca608ccfe /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = fce54b35702159f2b5c86c9f /* Keychain.swift */; };
 		bf2dd696019f50e38fb98b0b /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 603f0bdadb9c50fa85e9db71 /* UpdateChecker.swift */; };
 		f39280a38b735eb8a82bc0d9 /* XLSXParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = e4b9a45bb3b95ddfac9d5572 /* XLSXParser.swift */; };
 		c733e610ac735fbbb7236e3d /* BMI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50e8decbe52e583cba024379 /* BMI.swift */; };
 		1ce53678141c52ecad2d6e68 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = f07e0d6a05345db1813baf08 /* Models.swift */; };
+		672699210ef65bd4baf962c6 /* FoodRecognizeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = a409729b96d4507cbcebcda7 /* FoodRecognizeView.swift */; };
 		162039efb0a45392a9502690 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ad5e6f91abd75a2d97eff3fc /* LoginView.swift */; };
 		835694518e665316b067f271 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2891694d46a1525e84da1c02 /* MainTabView.swift */; };
 		8fc4147030cf508ea49cc7f8 /* MealListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77d71678ebe4534da04f6403 /* MealListView.swift */; };
+		4703f51ed27b54c390648957 /* NutritionOCRView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0a01495043205f18a54b06b9 /* NutritionOCRView.swift */; };
 		c193799472745d93a1832480 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 912fbdc1869c5676af6a87bd /* ProfileView.swift */; };
 		a0ccc04dd2ba52f5b76a6eb0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = c785e43041735326a17a66fe /* RootView.swift */; };
 		0b0ba687a0ba5f2bbf936e53 /* TrendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = bf29ff4061c75c60b9f7d342 /* TrendView.swift */; };
@@ -36,14 +39,17 @@
 		3bca249f98bb5d1dae799d85 /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/AppLogger.swift; sourceTree = "<group>"; };
 		e9c778254ec9558198dc3f88 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/AppState.swift; sourceTree = "<group>"; };
 		0e7af03167a05bbba2fcb644 /* ColorHex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/ColorHex.swift; sourceTree = "<group>"; };
+		f628b9d4a8fc592190109a5a /* ImageUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/ImageUtil.swift; sourceTree = "<group>"; };
 		fce54b35702159f2b5c86c9f /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Keychain.swift; sourceTree = "<group>"; };
 		603f0bdadb9c50fa85e9db71 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/UpdateChecker.swift; sourceTree = "<group>"; };
 		e4b9a45bb3b95ddfac9d5572 /* XLSXParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/XLSXParser.swift; sourceTree = "<group>"; };
 		50e8decbe52e583cba024379 /* BMI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/BMI.swift; sourceTree = "<group>"; };
 		f07e0d6a05345db1813baf08 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/Models.swift; sourceTree = "<group>"; };
+		a409729b96d4507cbcebcda7 /* FoodRecognizeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/FoodRecognizeView.swift; sourceTree = "<group>"; };
 		ad5e6f91abd75a2d97eff3fc /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/LoginView.swift; sourceTree = "<group>"; };
 		2891694d46a1525e84da1c02 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/MainTabView.swift; sourceTree = "<group>"; };
 		77d71678ebe4534da04f6403 /* MealListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/MealListView.swift; sourceTree = "<group>"; };
+		0a01495043205f18a54b06b9 /* NutritionOCRView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/NutritionOCRView.swift; sourceTree = "<group>"; };
 		912fbdc1869c5676af6a87bd /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ProfileView.swift; sourceTree = "<group>"; };
 		c785e43041735326a17a66fe /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/RootView.swift; sourceTree = "<group>"; };
 		bf29ff4061c75c60b9f7d342 /* TrendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/TrendView.swift; sourceTree = "<group>"; };
@@ -74,14 +80,17 @@
 				3bca249f98bb5d1dae799d85 /* AppLogger.swift */,
 				e9c778254ec9558198dc3f88 /* AppState.swift */,
 				0e7af03167a05bbba2fcb644 /* ColorHex.swift */,
+				f628b9d4a8fc592190109a5a /* ImageUtil.swift */,
 				fce54b35702159f2b5c86c9f /* Keychain.swift */,
 				603f0bdadb9c50fa85e9db71 /* UpdateChecker.swift */,
 				e4b9a45bb3b95ddfac9d5572 /* XLSXParser.swift */,
 				50e8decbe52e583cba024379 /* BMI.swift */,
 				f07e0d6a05345db1813baf08 /* Models.swift */,
+				a409729b96d4507cbcebcda7 /* FoodRecognizeView.swift */,
 				ad5e6f91abd75a2d97eff3fc /* LoginView.swift */,
 				2891694d46a1525e84da1c02 /* MainTabView.swift */,
 				77d71678ebe4534da04f6403 /* MealListView.swift */,
+				0a01495043205f18a54b06b9 /* NutritionOCRView.swift */,
 				912fbdc1869c5676af6a87bd /* ProfileView.swift */,
 				c785e43041735326a17a66fe /* RootView.swift */,
 				bf29ff4061c75c60b9f7d342 /* TrendView.swift */,
@@ -176,14 +185,17 @@
 				f6b11089bd575eb4bc4abf1b /* AppLogger.swift in Sources */,
 				fbd329219a805f53aba3fd5c /* AppState.swift in Sources */,
 				3ceb13d339c8527eb71456b4 /* ColorHex.swift in Sources */,
+				e28017fbba4855a7972f4a44 /* ImageUtil.swift in Sources */,
 				7f17715cecf55b9ca608ccfe /* Keychain.swift in Sources */,
 				bf2dd696019f50e38fb98b0b /* UpdateChecker.swift in Sources */,
 				f39280a38b735eb8a82bc0d9 /* XLSXParser.swift in Sources */,
 				c733e610ac735fbbb7236e3d /* BMI.swift in Sources */,
 				1ce53678141c52ecad2d6e68 /* Models.swift in Sources */,
+				672699210ef65bd4baf962c6 /* FoodRecognizeView.swift in Sources */,
 				162039efb0a45392a9502690 /* LoginView.swift in Sources */,
 				835694518e665316b067f271 /* MainTabView.swift in Sources */,
 				8fc4147030cf508ea49cc7f8 /* MealListView.swift in Sources */,
+				4703f51ed27b54c390648957 /* NutritionOCRView.swift in Sources */,
 				c193799472745d93a1832480 /* ProfileView.swift in Sources */,
 				a0ccc04dd2ba52f5b76a6eb0 /* RootView.swift in Sources */,
 				0b0ba687a0ba5f2bbf936e53 /* TrendView.swift in Sources */,

@@ -39,12 +39,34 @@ CREATE TABLE IF NOT EXISTS meals (
   date       TEXT    NOT NULL,           -- YYYY-MM-DD
   type       TEXT    NOT NULL,           -- breakfast/lunch/dinner/snack
   content    TEXT    NOT NULL,
+  kcal       REAL,                       -- 卡路里（千卡），拍照识别时填
+  protein_g  REAL,
+  fat_g      REAL,
+  carbs_g    REAL,
+  image_url  TEXT,                       -- 食物图片 URL（可选）
   created_at INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_weights_user_date ON weights(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_meals_user_date ON meals(user_id, date);
 `);
+
+// 迁移：老库 meals 表补营养/图片字段（列已存在时跳过）
+function ensureColumn(table, column, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  if (!cols.includes(column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+  }
+}
+for (const [col, ddl] of [
+  ['kcal', 'REAL'],
+  ['protein_g', 'REAL'],
+  ['fat_g', 'REAL'],
+  ['carbs_g', 'REAL'],
+  ['image_url', 'TEXT'],
+]) {
+  ensureColumn('meals', col, ddl);
+}
 
 export default db;
 export { DATA_DIR };

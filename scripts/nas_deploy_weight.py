@@ -154,6 +154,7 @@ def main():
             "-p %s:3000 "
             "-e JWT_SECRET=%s "
             "-v %s/data:/data "
+            "-v /volume2/docker/giliconcloude_key.txt:/data/giliconcloude_key.txt:ro "
             "%s"
             % (CONTAINER_NAME, CONTAINER_NAME, HOST_PORT, shq(jwt_secret), shq(NAS_APP_DIR), image)
         )

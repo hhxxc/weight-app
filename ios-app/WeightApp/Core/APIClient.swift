@@ -39,8 +39,8 @@ final class APIClient {
 
     private init() {
         let cfg = URLSessionConfiguration.default
-        cfg.timeoutIntervalForRequest = 15
-        cfg.timeoutIntervalForResource = 30
+        cfg.timeoutIntervalForRequest = 30   // AI 识图需要较长时间
+        cfg.timeoutIntervalForResource = 90
         session = URLSession(configuration: cfg)
 
         activeServer = UserDefaults.standard.string(forKey: serverKey) ?? AppConfig.defaultServer
@@ -207,13 +207,45 @@ final class APIClient {
         return r.items
     }
 
-    struct MealBody: Encodable { let date: String; let type: String; let content: String }
-    func saveMeal(date: String, type: String, content: String) async throws -> MealRecord {
-        let r: MealItemResponse = try await request("POST", "/meals", body: MealBody(date: date, type: type, content: content))
+    struct MealBody: Encodable {
+        let date: String; let type: String; let content: String
+        let kcal: Double?; let protein_g: Double?; let fat_g: Double?; let carbs_g: Double?; let image_url: String?
+    }
+    func saveMeal(date: String, type: String, content: String,
+                  kcal: Double? = nil, protein_g: Double? = nil, fat_g: Double? = nil,
+                  carbs_g: Double? = nil, image_url: String? = nil) async throws -> MealRecord {
+        let r: MealItemResponse = try await request("POST", "/meals", body: MealBody(
+            date: date, type: type, content: content,
+            kcal: kcal, protein_g: protein_g, fat_g: fat_g, carbs_g: carbs_g, image_url: image_url))
         return r.item
     }
 
     func deleteMeal(id: Int) async throws {
         let _: [String: Bool] = try await request("DELETE", "/meals/\(id)")
+    }
+
+    // MARK: - 食物识图 / 配料表 OCR / 图片上传
+
+    struct FoodRecognition: Decodable {
+        let food: String; let weight_g: Double
+        let kcal: Double; let protein_g: Double; let fat_g: Double; let carbs_g: Double
+    }
+    struct NutritionInfo: Decodable {
+        let name: String; let energy_kj: Double; let energy_kcal: Double
+        let protein_g: Double; let fat_g: Double; let carbs_g: Double
+    }
+    struct ImageBody: Encodable { let image_base64: String; let ext: String }
+
+    func recognizeFood(imageBase64: String) async throws -> FoodRecognition {
+        try await request("POST", "/foods/recognize", body: ImageBody(image_base64: imageBase64, ext: "jpg"))
+    }
+
+    func ocrNutrition(imageBase64: String) async throws -> NutritionInfo {
+        try await request("POST", "/foods/ocr", body: ImageBody(image_base64: imageBase64, ext: "jpg"))
+    }
+
+    func uploadImage(imageBase64: String, ext: String) async throws -> String {
+        let r: [String: String] = try await request("POST", "/upload", body: ImageBody(image_base64: imageBase64, ext: ext))
+        return r["url"] ?? ""
     }
 }
