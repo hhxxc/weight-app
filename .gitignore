@@ -31,3 +31,6 @@ Thumbs.db
 
 # WorkBuddy 本地项目数据（不进仓库）
 .workbuddy/
+
+# 临时探测脚本
+scripts/_probe*.py
