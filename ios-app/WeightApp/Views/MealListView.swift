@@ -159,8 +159,8 @@ struct MealEditView: View {
                 _ = try await APIClient.shared.saveMeal(date: dateStr, type: type, content: content)
                 await state.refreshMeals(date: dateStr)
                 await MainActor.run { dismiss() }
-            } catch {
-                await MainActor.run { error = error.localizedDescription }
+            } catch let err {
+                await MainActor.run { error = err.localizedDescription }
             }
         }
     }

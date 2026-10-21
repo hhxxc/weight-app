@@ -140,8 +140,8 @@ struct ProfileEditView: View {
                     state.user = u
                     dismiss()
                 }
-            } catch {
-                await MainActor.run { error = error.localizedDescription }
+            } catch let err {
+                await MainActor.run { error = err.localizedDescription }
             }
         }
     }
@@ -160,10 +160,12 @@ struct ServerSettingsView: View {
                     .autocapitalization(.none)
                     .disableAutocorrection(true)
             }
-            Section("备用服务器") {
+            Section {
                 TextField("地址", text: $backup)
                     .autocapitalization(.none)
                     .disableAutocorrection(true)
+            } header: {
+                Text("备用服务器")
             } footer: {
                 Text("主地址连不上时自动切换备用地址。修改后下次请求生效。")
             }
@@ -249,7 +251,7 @@ struct ImportView: View {
                     Button("完成") { dismiss() }
                 }
             }
-            .fileImporter(isPresented: $isPicking, allowedContentTypes: [.xlsx, .commaSeparatedText, .plainText]) { result in
+            .fileImporter(isPresented: $isPicking, allowedContentTypes: [UTType(filenameExtension: "xlsx") ?? .data, .commaSeparatedText, .plainText]) { result in
                 handlePick(result)
             }
         }

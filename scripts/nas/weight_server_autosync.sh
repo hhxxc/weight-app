@@ -11,6 +11,9 @@
 #
 set -u
 
+# 群晖 docker 装在 /usr/local/bin（sudo 的 PATH 不含它），显式补上，手动/定时都能跑
+export PATH="/usr/local/bin:/usr/local/sbin:/usr/syno/bin:$PATH"
+
 REPO="${WEIGHT_REPO:-hhxxc/weight-app}"
 APP_DIR="${WEIGHT_APP_DIR:-/volume2/docker/weight-server}"
 CONTAINER_NAME="weight-server"

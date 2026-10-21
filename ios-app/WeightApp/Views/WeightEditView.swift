@@ -80,8 +80,8 @@ struct WeightEditView: View {
                 _ = try await APIClient.shared.saveWeight(date: dateStr, kg: kg, note: note)
                 await state.refreshWeights()
                 await MainActor.run { dismiss() }
-            } catch {
-                await MainActor.run { error = error.localizedDescription }
+            } catch let err {
+                await MainActor.run { error = err.localizedDescription }
             }
         }
     }

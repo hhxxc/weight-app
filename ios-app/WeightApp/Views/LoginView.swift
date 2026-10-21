@@ -102,8 +102,8 @@ struct LoginView: View {
                                                             password: password)
                 }
                 await MainActor.run { state.handleAuth(resp) }
-            } catch {
-                await MainActor.run { error = error.localizedDescription }
+            } catch let err {
+                await MainActor.run { error = err.localizedDescription }
             }
         }
     }

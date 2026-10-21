@@ -69,8 +69,10 @@ def shq(s):
 
 
 def run(client, cmd, timeout=900):
+    # 群晖 docker 在 /usr/local/bin（sudo 的 PATH 不含），先补 PATH 再执行
+    full = "export PATH=/usr/local/bin:/usr/local/sbin:/usr/syno/bin:$PATH; " + cmd
     chan = client.exec_command(
-        "echo '%s' | sudo -S -p '' bash -c %s" % (PASSWORD, shq(cmd)), timeout=timeout)
+        "echo '%s' | sudo -S -p '' bash -c %s" % (PASSWORD, shq(full)), timeout=timeout)
     out = chan[1].read().decode("utf-8", "replace")
     err = chan[2].read().decode("utf-8", "replace")
     return out, err
