@@ -112,19 +112,10 @@ def gh_cli_api(path, payload=None, method=None):
 
 
 def gh_api(path, payload=None, method=None):
-    """GitHub API 调用。优先直连 IP（绕开坏 DNS 和代理），**任何**失败都回退 gh CLI。
-    ⚠️ 2026-10-19：硬编码的 GITHUB_IP 会过期，过期后直连拿到 HTTP 400
-    （"malformed request"，其实是打到了错误的节点）。以前 HTTP 错误直接退出，
-    于是一旦 IP 过期推送就彻底废了 —— HTTP 错误也必须回退。"""
-    try:
-        result = _http(path, method=method or "GET", payload=payload)
-        return result if isinstance(result, str) else json.dumps(result)
-    except urllib.error.HTTPError as e:
-        sys.stderr.write("直连返回 HTTP %s，回退 gh CLI…\n" % e.code)
-        return gh_cli_api(path, payload, method)
-    except Exception as e:  # noqa: BLE001 —— 回退到 gh CLI
-        sys.stderr.write("直连失败（%s），回退 gh CLI…\n" % e)
-        return gh_cli_api(path, payload, method)
+    """GitHub API 调用。直接走 gh CLI（它自己解决 DNS/代理，实测最稳）。
+    ⚠️ 不再走 urllib 直连 IP：硬编码 IP 会过期，直连会卡 30 秒超时（不是快速失败），
+    多个 blob 上传时累计超时。gh CLI 已验证稳定快速。"""
+    return gh_cli_api(path, payload, method)
 
 
 def repo_slug():
