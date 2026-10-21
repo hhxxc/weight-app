@@ -25,6 +25,7 @@
 		4703f51ed27b54c390648957 /* NutritionOCRView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0a01495043205f18a54b06b9 /* NutritionOCRView.swift */; };
 		c193799472745d93a1832480 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 912fbdc1869c5676af6a87bd /* ProfileView.swift */; };
 		a0ccc04dd2ba52f5b76a6eb0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = c785e43041735326a17a66fe /* RootView.swift */; };
+		30a1693e872c5d6b862147d8 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7f04774a93df5c09849c164c /* StatsView.swift */; };
 		0b0ba687a0ba5f2bbf936e53 /* TrendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = bf29ff4061c75c60b9f7d342 /* TrendView.swift */; };
 		3ff636877a8e59c5b1a450e8 /* UpdateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = a5366fa99e8d55eca89c528b /* UpdateView.swift */; };
 		98ccf720fd9e5226b459418b /* WeightEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 542f92ffd9d65b25b7f50c5f /* WeightEditView.swift */; };
@@ -52,6 +53,7 @@
 		0a01495043205f18a54b06b9 /* NutritionOCRView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/NutritionOCRView.swift; sourceTree = "<group>"; };
 		912fbdc1869c5676af6a87bd /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ProfileView.swift; sourceTree = "<group>"; };
 		c785e43041735326a17a66fe /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/RootView.swift; sourceTree = "<group>"; };
+		7f04774a93df5c09849c164c /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/StatsView.swift; sourceTree = "<group>"; };
 		bf29ff4061c75c60b9f7d342 /* TrendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/TrendView.swift; sourceTree = "<group>"; };
 		a5366fa99e8d55eca89c528b /* UpdateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/UpdateView.swift; sourceTree = "<group>"; };
 		542f92ffd9d65b25b7f50c5f /* WeightEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/WeightEditView.swift; sourceTree = "<group>"; };
@@ -93,6 +95,7 @@
 				0a01495043205f18a54b06b9 /* NutritionOCRView.swift */,
 				912fbdc1869c5676af6a87bd /* ProfileView.swift */,
 				c785e43041735326a17a66fe /* RootView.swift */,
+				7f04774a93df5c09849c164c /* StatsView.swift */,
 				bf29ff4061c75c60b9f7d342 /* TrendView.swift */,
 				a5366fa99e8d55eca89c528b /* UpdateView.swift */,
 				542f92ffd9d65b25b7f50c5f /* WeightEditView.swift */,
@@ -198,6 +201,7 @@
 				4703f51ed27b54c390648957 /* NutritionOCRView.swift in Sources */,
 				c193799472745d93a1832480 /* ProfileView.swift in Sources */,
 				a0ccc04dd2ba52f5b76a6eb0 /* RootView.swift in Sources */,
+				30a1693e872c5d6b862147d8 /* StatsView.swift in Sources */,
 				0b0ba687a0ba5f2bbf936e53 /* TrendView.swift in Sources */,
 				3ff636877a8e59c5b1a450e8 /* UpdateView.swift in Sources */,
 				98ccf720fd9e5226b459418b /* WeightEditView.swift in Sources */,

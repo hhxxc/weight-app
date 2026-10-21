@@ -25,6 +25,8 @@ function readKey() {
 // 视觉模型：识图主力（巢记实测恒 ~6s），OCR 用专门模型
 const FOOD_MODEL = process.env.AI_FOOD_MODEL || 'Qwen/Qwen3-VL-30B-A3B-Instruct';
 const OCR_MODEL = process.env.AI_OCR_MODEL || 'PaddlePaddle/PaddleOCR-VL-1.5';
+// 文本模型：AI 建议（便宜快速即可）
+const TEXT_MODEL = process.env.AI_TEXT_MODEL || 'deepseek-ai/DeepSeek-V4.1-Flash';
 
 async function chat(model, text, imageBase64) {
   const key = readKey();
@@ -104,4 +106,17 @@ export async function ocrNutrition(imageBase64) {
     fat_g: Number(j.fat_g) || 0,
     carbs_g: Number(j.carbs_g) || 0,
   };
+}
+
+// AI 建议：根据统计摘要生成减重/营养建议（纯文本模型）
+export async function generateAdvice(summaryText) {
+  const prompt = [
+    '你是专业的减重与营养顾问。根据下面这份个人数据，给出 3~5 条简洁、具体、可执行的建议。',
+    '要求：用中文；语气友好直接，不要客套话和免责声明；每条建议要落到具体行动（吃多少、做什么）。',
+    '如果数据不足（记录很少），先提醒用户坚持每天记录，再给通用建议。',
+    '',
+    summaryText,
+  ].join('\n');
+  const raw = await chat(TEXT_MODEL, prompt, null);
+  return raw.trim();
 }

@@ -248,4 +248,38 @@ final class APIClient {
         let r: [String: String] = try await request("POST", "/upload", body: ImageBody(image_base64: imageBase64, ext: ext))
         return r["url"] ?? ""
     }
+
+    // MARK: - 统计 + AI 建议
+
+    struct StatsResponse: Decodable {
+        struct WeightStats: Decodable {
+            let start_kg: Double?; let current_kg: Double?; let target_kg: Double?
+            let lost_kg: Double?; let height_cm: Double?; let bmi: Double?; let bmi_category: String?
+            let record_count: Int
+        }
+        struct CaloriesStats: Decodable {
+            let today_kcal: Double; let avg7_kcal: Double; let avg30_kcal: Double
+        }
+        struct NutritionStats: Decodable {
+            let avg7_protein_g: Double; let avg7_fat_g: Double; let avg7_carbs_g: Double
+        }
+        struct DailyPoint: Decodable, Identifiable {
+            var id: String { date }
+            let date: String; let kg: Double?; let kcal: Double
+            let protein_g: Double; let fat_g: Double; let carbs_g: Double
+        }
+        let weight: WeightStats
+        let calories: CaloriesStats
+        let nutrition: NutritionStats
+        let daily: [DailyPoint]
+    }
+
+    func fetchStats() async throws -> StatsResponse {
+        try await request("GET", "/stats")
+    }
+
+    func fetchAdvice() async throws -> String {
+        let r: [String: String] = try await request("GET", "/advice")
+        return r["advice"] ?? ""
+    }
 }

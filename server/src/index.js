@@ -6,7 +6,8 @@ import { join } from 'path';
 import bcrypt from 'bcryptjs';
 import db, { DATA_DIR } from './db.js';
 import { sign, verify } from './auth.js';
-import { recognizeFood, ocrNutrition } from './ai.js';
+import { recognizeFood, ocrNutrition, generateAdvice } from './ai.js';
+import { computeStats } from './stats.js';
 
 const PORT = process.env.PORT || 3000;
 const BCRYPT_ROUNDS = 10;
@@ -238,6 +239,33 @@ route('POST', '/upload', async (req, res) => {
     return json(res, 500, { error: '图片保存失败' });
   }
   json(res, 200, { url: `/uploads/${name}` });
+}, true);
+
+// ---- 统计（体重/卡路里/营养汇总 + 每日趋势）----
+route('GET', '/stats', (req, res) => {
+  json(res, 200, computeStats(req.user.id));
+}, true);
+
+// ---- AI 建议（基于统计数据）----
+route('GET', '/advice', async (req, res) => {
+  const s = computeStats(req.user.id);
+  const w = s.weight, c = s.calories, n = s.nutrition;
+  const summary = [
+    `身高 ${w.height_cm ?? '未填'} cm，目标体重 ${w.target_kg ?? '未填'} kg。`,
+    w.start_kg != null && w.current_kg != null
+      ? `体重从 ${w.start_kg.toFixed(1)} kg 到 ${w.current_kg.toFixed(1)} kg（${w.lost_kg >= 0 ? '减' : '增'}了 ${Math.abs(w.lost_kg).toFixed(1)} kg），共 ${w.record_count} 条记录。`
+      : `体重记录 ${w.record_count} 条。`,
+    `当前 BMI ${w.bmi ?? '—'}（${w.bmi_category || '—'}）。`,
+    `今日摄入 ${c.today_kcal} 千卡，近 7 天日均 ${c.avg7_kcal} 千卡，近 30 天日均 ${c.avg30_kcal} 千卡。`,
+    `近 7 天日均：蛋白质 ${n.avg7_protein_g}g、脂肪 ${n.avg7_fat_g}g、碳水 ${n.avg7_carbs_g}g。`,
+  ].join('\n');
+  try {
+    const advice = await generateAdvice(summary);
+    json(res, 200, { advice });
+  } catch (e) {
+    console.error('[ai] generateAdvice 失败:', e.message);
+    json(res, 502, { error: e.message || '生成建议失败' });
+  }
 }, true);
 
 // ---- 批量导入（Excel/CSV 已在客户端解析成 JSON 数组）----
