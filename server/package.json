@@ -1,0 +1,16 @@
+{
+  "name": "weight-server",
+  "version": "1.0.0",
+  "description": "体重/饮食记录 App 的轻量后端：账号注册登录 + 数据隔离 + REST API",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.3.0",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

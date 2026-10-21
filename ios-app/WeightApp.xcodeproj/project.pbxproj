@@ -1,0 +1,310 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		93920558c57357229fddb0f0 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4d4ad20db889536cbde0c502 /* APIClient.swift */; };
+		9bc7d9d924e75d619612fc7c /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = e975d6ae44e157d2a551d261 /* AppConfig.swift */; };
+		f6b11089bd575eb4bc4abf1b /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3bca249f98bb5d1dae799d85 /* AppLogger.swift */; };
+		fbd329219a805f53aba3fd5c /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = e9c778254ec9558198dc3f88 /* AppState.swift */; };
+		3ceb13d339c8527eb71456b4 /* ColorHex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0e7af03167a05bbba2fcb644 /* ColorHex.swift */; };
+		7f17715cecf55b9ca608ccfe /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = fce54b35702159f2b5c86c9f /* Keychain.swift */; };
+		bf2dd696019f50e38fb98b0b /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 603f0bdadb9c50fa85e9db71 /* UpdateChecker.swift */; };
+		f39280a38b735eb8a82bc0d9 /* XLSXParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = e4b9a45bb3b95ddfac9d5572 /* XLSXParser.swift */; };
+		c733e610ac735fbbb7236e3d /* BMI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50e8decbe52e583cba024379 /* BMI.swift */; };
+		1ce53678141c52ecad2d6e68 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = f07e0d6a05345db1813baf08 /* Models.swift */; };
+		162039efb0a45392a9502690 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ad5e6f91abd75a2d97eff3fc /* LoginView.swift */; };
+		835694518e665316b067f271 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2891694d46a1525e84da1c02 /* MainTabView.swift */; };
+		8fc4147030cf508ea49cc7f8 /* MealListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77d71678ebe4534da04f6403 /* MealListView.swift */; };
+		c193799472745d93a1832480 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 912fbdc1869c5676af6a87bd /* ProfileView.swift */; };
+		a0ccc04dd2ba52f5b76a6eb0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = c785e43041735326a17a66fe /* RootView.swift */; };
+		0b0ba687a0ba5f2bbf936e53 /* TrendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = bf29ff4061c75c60b9f7d342 /* TrendView.swift */; };
+		3ff636877a8e59c5b1a450e8 /* UpdateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = a5366fa99e8d55eca89c528b /* UpdateView.swift */; };
+		98ccf720fd9e5226b459418b /* WeightEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 542f92ffd9d65b25b7f50c5f /* WeightEditView.swift */; };
+		68f67074b0bc5979b07e7f63 /* WeightListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22e76a7a875e56789f502550 /* WeightListView.swift */; };
+		a415274568cf55a78c5a037d /* WeightApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ae55f9e60705eb08ec8e15f /* WeightApp.swift */; };
+		024819593cd75f3db2e6acbb /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2ce92a602438556dbc30c915 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		4d4ad20db889536cbde0c502 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/APIClient.swift; sourceTree = "<group>"; };
+		e975d6ae44e157d2a551d261 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/AppConfig.swift; sourceTree = "<group>"; };
+		3bca249f98bb5d1dae799d85 /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/AppLogger.swift; sourceTree = "<group>"; };
+		e9c778254ec9558198dc3f88 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/AppState.swift; sourceTree = "<group>"; };
+		0e7af03167a05bbba2fcb644 /* ColorHex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/ColorHex.swift; sourceTree = "<group>"; };
+		fce54b35702159f2b5c86c9f /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Keychain.swift; sourceTree = "<group>"; };
+		603f0bdadb9c50fa85e9db71 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/UpdateChecker.swift; sourceTree = "<group>"; };
+		e4b9a45bb3b95ddfac9d5572 /* XLSXParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/XLSXParser.swift; sourceTree = "<group>"; };
+		50e8decbe52e583cba024379 /* BMI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/BMI.swift; sourceTree = "<group>"; };
+		f07e0d6a05345db1813baf08 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/Models.swift; sourceTree = "<group>"; };
+		ad5e6f91abd75a2d97eff3fc /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/LoginView.swift; sourceTree = "<group>"; };
+		2891694d46a1525e84da1c02 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/MainTabView.swift; sourceTree = "<group>"; };
+		77d71678ebe4534da04f6403 /* MealListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/MealListView.swift; sourceTree = "<group>"; };
+		912fbdc1869c5676af6a87bd /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ProfileView.swift; sourceTree = "<group>"; };
+		c785e43041735326a17a66fe /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/RootView.swift; sourceTree = "<group>"; };
+		bf29ff4061c75c60b9f7d342 /* TrendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/TrendView.swift; sourceTree = "<group>"; };
+		a5366fa99e8d55eca89c528b /* UpdateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/UpdateView.swift; sourceTree = "<group>"; };
+		542f92ffd9d65b25b7f50c5f /* WeightEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/WeightEditView.swift; sourceTree = "<group>"; };
+		22e76a7a875e56789f502550 /* WeightListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/WeightListView.swift; sourceTree = "<group>"; };
+		0ae55f9e60705eb08ec8e15f /* WeightApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightApp.swift; sourceTree = "<group>"; };
+		3f175eff1f285b7c96837bea /* WeightApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WeightApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2ce92a602438556dbc30c915 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2b615389d2895b1b9b211257 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		53d26a6629f15b148a4aedad /* WeightApp */ = {
+			isa = PBXGroup;
+			children = (
+				4d4ad20db889536cbde0c502 /* APIClient.swift */,
+				e975d6ae44e157d2a551d261 /* AppConfig.swift */,
+				3bca249f98bb5d1dae799d85 /* AppLogger.swift */,
+				e9c778254ec9558198dc3f88 /* AppState.swift */,
+				0e7af03167a05bbba2fcb644 /* ColorHex.swift */,
+				fce54b35702159f2b5c86c9f /* Keychain.swift */,
+				603f0bdadb9c50fa85e9db71 /* UpdateChecker.swift */,
+				e4b9a45bb3b95ddfac9d5572 /* XLSXParser.swift */,
+				50e8decbe52e583cba024379 /* BMI.swift */,
+				f07e0d6a05345db1813baf08 /* Models.swift */,
+				ad5e6f91abd75a2d97eff3fc /* LoginView.swift */,
+				2891694d46a1525e84da1c02 /* MainTabView.swift */,
+				77d71678ebe4534da04f6403 /* MealListView.swift */,
+				912fbdc1869c5676af6a87bd /* ProfileView.swift */,
+				c785e43041735326a17a66fe /* RootView.swift */,
+				bf29ff4061c75c60b9f7d342 /* TrendView.swift */,
+				a5366fa99e8d55eca89c528b /* UpdateView.swift */,
+				542f92ffd9d65b25b7f50c5f /* WeightEditView.swift */,
+				22e76a7a875e56789f502550 /* WeightListView.swift */,
+				0ae55f9e60705eb08ec8e15f /* WeightApp.swift */,
+				2ce92a602438556dbc30c915 /* Assets.xcassets */,
+			);
+			path = WeightApp;
+			sourceTree = "<group>";
+		};
+		fba492e62c865c5290f108b4 = {
+			isa = PBXGroup;
+			children = (
+				53d26a6629f15b148a4aedad /* WeightApp */,
+				3f175eff1f285b7c96837bea /* WeightApp.app */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		749e3c6c3d335a4db2b2ba93 /* WeightApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 972c81b4041e5a46bbbb31d8 /* Build configuration list for PBXNativeTarget "WeightApp" */;
+			buildPhases = (
+				6e83a56ccc2c51cd9137a1fb /* Sources */,
+				2b615389d2895b1b9b211257 /* Frameworks */,
+				6db5716d86445442a0a06e3d /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WeightApp;
+			productName = WeightApp;
+			productReference = 3f175eff1f285b7c96837bea /* WeightApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1a2e7e7f700f5922a9812582 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					749e3c6c3d335a4db2b2ba93 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = 3cc75649d90a5bd6af193fb6 /* Build configuration list for PBXProject "WeightApp" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = fba492e62c865c5290f108b4;
+			productRefGroup = fba492e62c865c5290f108b4 /* WeightApp */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				749e3c6c3d335a4db2b2ba93 /* WeightApp */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		6db5716d86445442a0a06e3d /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				024819593cd75f3db2e6acbb /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		6e83a56ccc2c51cd9137a1fb /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				93920558c57357229fddb0f0 /* APIClient.swift in Sources */,
+				9bc7d9d924e75d619612fc7c /* AppConfig.swift in Sources */,
+				f6b11089bd575eb4bc4abf1b /* AppLogger.swift in Sources */,
+				fbd329219a805f53aba3fd5c /* AppState.swift in Sources */,
+				3ceb13d339c8527eb71456b4 /* ColorHex.swift in Sources */,
+				7f17715cecf55b9ca608ccfe /* Keychain.swift in Sources */,
+				bf2dd696019f50e38fb98b0b /* UpdateChecker.swift in Sources */,
+				f39280a38b735eb8a82bc0d9 /* XLSXParser.swift in Sources */,
+				c733e610ac735fbbb7236e3d /* BMI.swift in Sources */,
+				1ce53678141c52ecad2d6e68 /* Models.swift in Sources */,
+				162039efb0a45392a9502690 /* LoginView.swift in Sources */,
+				835694518e665316b067f271 /* MainTabView.swift in Sources */,
+				8fc4147030cf508ea49cc7f8 /* MealListView.swift in Sources */,
+				c193799472745d93a1832480 /* ProfileView.swift in Sources */,
+				a0ccc04dd2ba52f5b76a6eb0 /* RootView.swift in Sources */,
+				0b0ba687a0ba5f2bbf936e53 /* TrendView.swift in Sources */,
+				3ff636877a8e59c5b1a450e8 /* UpdateView.swift in Sources */,
+				98ccf720fd9e5226b459418b /* WeightEditView.swift in Sources */,
+				68f67074b0bc5979b07e7f63 /* WeightListView.swift in Sources */,
+				a415274568cf55a78c5a037d /* WeightApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		10b044e9965752738d4d088a /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		aa0335631e2f518b8e91d1c6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		50836518160d5fd1830badb0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = WeightApp/WeightApp.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WeightApp/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hhxxc.weight;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4d71b4a079be53fd849a522c /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = WeightApp/WeightApp.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WeightApp/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hhxxc.weight;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		3cc75649d90a5bd6af193fb6 /* Build configuration list for PBXProject "WeightApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				10b044e9965752738d4d088a /* Debug */,
+				aa0335631e2f518b8e91d1c6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		972c81b4041e5a46bbbb31d8 /* Build configuration list for PBXNativeTarget "WeightApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				50836518160d5fd1830badb0 /* Debug */,
+				4d71b4a079be53fd849a522c /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 1a2e7e7f700f5922a9812582 /* Project object */;
+}

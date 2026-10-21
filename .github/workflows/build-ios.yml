@@ -1,0 +1,156 @@
+name: Build Weight App IPA + Server
+
+# 体重记录 App 云端构建：GitHub 托管 macOS 运行机上用 Xcode 编译 iOS App，
+# 产出 IPA 供 TrollStore 安装；同时把后端 server 目录打成 tar.gz 供 NAS 自动部署。
+# 无需本地 Mac、无需付费开发者证书。
+#
+# 触发：
+#   - 推送 main 且改动 ios-app/ 或 server/ 或本工作流时自动构建，并自动发语义版本 Release
+#   - 手动 workflow_dispatch
+#
+# 版本号：语义版本 x.y.z（纯三段，无前导零），patch 满 9 进位 minor。
+# 资产名固定：weight-app.ipa（NAS autosync 靠 releases/latest/download/<name> 永久地址定位）
+#             server.tar.gz（NAS 后端 autosync 用）
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'ios-app/**'
+      - 'server/**'
+      - '.github/workflows/build-ios.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Compute app version (auto patch+1 on push)
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST="$(gh api "repos/${{ github.repository }}/releases?per_page=100" --jq '.[].tag_name' \
+            | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" \
+            | sed -E "s/^v//" \
+            | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)"
+          if [ -z "$LATEST" ]; then
+            LATEST="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' ios-app/WeightApp/Info.plist)"
+          fi
+          V="$(echo "$LATEST" | awk -F. '{ if ($3 >= 9) printf "%d.%d.0", $1, $2+1; else printf "%d.%d.%d", $1, $2, $3+1 }')"
+          if [ -z "$V" ]; then V="1.0.0"; fi
+          echo "app_version=$V" >> "$GITHUB_OUTPUT"
+          echo "IPA_NAME=weight-app.ipa" >> "$GITHUB_ENV"
+          echo "==> 版本 $V，IPA 资产名 weight-app.ipa（固定）"
+
+      - name: Generate project.pbxproj
+        working-directory: ios-app
+        run: python3 gen_pbxproj.py
+
+      - name: Inject app version into Info.plist
+        working-directory: ios-app
+        run: |
+          PLIST="WeightApp/Info.plist"
+          V="${{ steps.version.outputs.app_version }}"
+          B="${{ github.run_number }}"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $V" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $V" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $B" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $B" "$PLIST"
+          sed -i '' "s/MARKETING_VERSION = [0-9.]*;/MARKETING_VERSION = $V;/g" WeightApp.xcodeproj/project.pbxproj
+          sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*;/CURRENT_PROJECT_VERSION = $B;/g" WeightApp.xcodeproj/project.pbxproj
+          echo "==> App 版本注入为 $V ($B)"
+
+      - name: Generate App Icon (single 1024)
+        run: |
+          npm install --no-save sharp
+          node -e "
+            const fs = require('fs');
+            const sharp = require('sharp');
+            const svg = fs.readFileSync('ios-app/WeightApp/Assets.xcassets/logo.svg', 'utf8');
+            sharp(Buffer.from(svg)).resize(1024,1024).png()
+              .toFile('ios-app/WeightApp/Assets.xcassets/AppIcon.appiconset/icon-1024.png');
+          "
+          ls -la ios-app/WeightApp/Assets.xcassets/AppIcon.appiconset/
+
+      - name: Build app (ad-hoc signed, no Apple cert needed)
+        id: xcodebuild
+        working-directory: ios-app
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project WeightApp.xcodeproj \
+            -scheme WeightApp \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build/dd \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee build.log
+
+      # 编译失败时把 xcodebuild 原文推到 ci-logs 分支，本机可 fetch 查看
+      - name: Ship build log to ci-logs branch (on compile failure)
+        if: failure() && steps.xcodebuild.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git checkout -B ci-logs
+          cp ios-app/build.log ci-build.log
+          git add -f ci-build.log
+          git commit -m "ci build log: run ${{ github.run_number }} @ ${{ github.sha }}"
+          git push -f origin ci-logs
+
+      - name: Package IPA (TrollStore will re-sign on device)
+        working-directory: ios-app
+        run: |
+          APP="build/dd/Build/Products/Release-iphoneos/WeightApp.app"
+          mkdir -p Payload
+          cp -r "$APP" Payload/
+          codesign --force --sign - --entitlements WeightApp/WeightApp.entitlements Payload/WeightApp.app
+          rm -rf build/dd
+          zip -r "$IPA_NAME" Payload
+          rm -rf Payload
+          ls -la "$IPA_NAME"
+
+      - name: Package server tarball
+        run: |
+          tar czf server.tar.gz --exclude=node_modules --exclude=data --exclude=.git server
+          ls -la server.tar.gz
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: weight-app-build
+          path: |
+            ios-app/${{ env.IPA_NAME }}
+            server.tar.gz
+          retention-days: 90
+
+      - name: Publish semantic version release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          V="${{ steps.version.outputs.app_version }}"
+          if gh release view "v$V" >/dev/null 2>&1; then
+            echo "==> tag v$V 已存在，跳过发版"
+            exit 0
+          fi
+          gh release create "v$V" \
+            "ios-app/${{ env.IPA_NAME }}" \
+            "server.tar.gz" \
+            --title "Weight App v$V" \
+            --notes "体重记录 App v$V。TrollStore 打开 weight-app.ipa 覆盖安装；server.tar.gz 供 NAS 自动部署后端。"

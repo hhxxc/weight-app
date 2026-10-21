@@ -1,0 +1,33 @@
+# 依赖与构建产物
+node_modules/
+server/node_modules/
+server/data/
+*.db
+
+# 本机私密凭据（绝不进仓库）
+scripts/nas_config_local.py
+scripts/*_local.py
+*.local.md
+HANDOFF.local.md
+
+# iOS 构建产物
+*.ipa
+build/
+Payload/
+DerivedData/
+ios-app/build/
+
+# 打包产物
+server.tar.gz
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 个人数据文件（不进仓库）
+*.xlsx
+*.xls
+*.csv
+
+# WorkBuddy 本地项目数据（不进仓库）
+.workbuddy/
