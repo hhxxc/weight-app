@@ -126,18 +126,11 @@ jobs:
           rm -rf Payload
           ls -la "$IPA_NAME"
 
-      - name: Package server tarball
-        run: |
-          tar czf server.tar.gz --exclude=node_modules --exclude=data --exclude=.git server
-          ls -la server.tar.gz
-
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: weight-app-build
-          path: |
-            ios-app/${{ env.IPA_NAME }}
-            server.tar.gz
+          name: weight-app-ipa
+          path: ios-app/${{ env.IPA_NAME }}
           retention-days: 90
 
       - name: Publish semantic version release
@@ -151,6 +144,36 @@ jobs:
           fi
           gh release create "v$V" \
             "ios-app/${{ env.IPA_NAME }}" \
-            "server.tar.gz" \
             --title "Weight App v$V" \
-            --notes "体重记录 App v$V。TrollStore 打开 weight-app.ipa 覆盖安装；server.tar.gz 供 NAS 自动部署后端。"
+            --notes "体重记录 App v$V。TrollStore 打开 weight-app.ipa 覆盖安装；后端镜像已推送 ghcr.io/hhxxc/weight-server。"
+
+  build-server:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: server
+          push: true
+          tags: ghcr.io/hhxxc/weight-server:latest
+
+      - name: Make package public
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method PATCH /user/packages/container/weight-server/visibility \
+            -f visibility=public \
+            || echo "::warning::设 public 失败，需手动在 GitHub 包设置页设为 public"

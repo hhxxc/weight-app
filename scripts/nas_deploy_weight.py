@@ -126,43 +126,41 @@ def main():
         print("缺少 NAS 密码：请设 NAS_SSH_PASS 或 NAS_CRED_FILE / scripts/nas_config_local.py")
         sys.exit(1)
 
+    # JWT_SECRET：环境变量 > nas_config_local.WEIGHT_JWT_SECRET > 默认
+    jwt_secret = os.environ.get("JWT_SECRET", "")
+    if not jwt_secret:
+        try:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import nas_config_local as _lc
+            jwt_secret = getattr(_lc, "WEIGHT_JWT_SECRET", "")
+        except ImportError:
+            pass
+    if not jwt_secret:
+        jwt_secret = "change-me-in-production"
+
     client, _ = connect(user, PASSWORD, port, hosts)
     try:
-        print("打包 server 目录…")
-        tarball = make_tarball(server_dir)
-        b64 = base64.b64encode(tarball).decode("ascii")
+        print("拉取 ghcr.io 镜像…")
+        image = "ghcr.io/hhxxc/weight-server:latest"
+        out, err = run(client, "docker pull %s" % image, timeout=900)
+        print(out.strip())
+        if err.strip():
+            print("[stderr] %s" % err.strip()[:300])
 
-        remote = "%s/server.tar.gz" % NAS_APP_DIR
-        run(client, "mkdir -p %s && : > /tmp/_srv.b64" % shq(NAS_APP_DIR))
-        total = (len(b64) + CHUNK - 1) // CHUNK
-        for i in range(0, len(b64), CHUNK):
-            run(client, "echo %s >> /tmp/_srv.b64" % shq(b64[i:i + CHUNK]))
-            done = i // CHUNK + 1
-            if done % 10 == 0 or done == total:
-                print("  上传 %d/%d" % (done, total), flush=True)
-
-        run(client, "base64 -d /tmp/_srv.b64 > %s && rm -f /tmp/_srv.b64 && "
-                    "cd %s && tar xzf server.tar.gz && rm -f server.tar.gz"
-                    % (shq(remote), shq(NAS_APP_DIR)))
-
-        print("构建并启动容器…")
-        build_cmd = (
-            "cd %s/server && "
-            "docker build -t %s . && "
+        print("启动容器…")
+        run_cmd = (
             "docker rm -f %s 2>/dev/null; "
             "docker run -d --name %s --restart unless-stopped "
             "-p %s:3000 "
             "-e JWT_SECRET=%s "
             "-v %s/data:/data "
             "%s"
-            % (shq(NAS_APP_DIR), CONTAINER_NAME, CONTAINER_NAME, CONTAINER_NAME,
-               HOST_PORT, shq(os.environ.get("JWT_SECRET", "change-me-in-production")),
-               shq(NAS_APP_DIR), CONTAINER_NAME)
+            % (CONTAINER_NAME, CONTAINER_NAME, HOST_PORT, shq(jwt_secret), shq(NAS_APP_DIR), image)
         )
-        out, err = run(client, build_cmd, timeout=900)
+        out, err = run(client, run_cmd, timeout=120)
         print(out.strip())
         if err.strip():
-            print("[stderr] %s" % err.strip()[:500])
+            print("[stderr] %s" % err.strip()[:300])
 
         print("容器状态：")
         out, _ = run(client, "docker ps --filter name=%s --format '{{.Names}} {{.Status}} {{.Ports}}'" % CONTAINER_NAME)
