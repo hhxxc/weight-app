@@ -504,6 +504,7 @@ struct MealEditView: View {
     @State private var type = MealRecord.autoType()
     @State private var content = ""
     @State private var kcalText = ""
+    @State private var mealDate = Date()
     @State private var isBusy = false
     @State private var error: String?
 
@@ -518,6 +519,9 @@ struct MealEditView: View {
                         ForEach(types, id: \.0) { t in Text(t.1).tag(t.0) }
                     }
                     .pickerStyle(.segmented)
+                }
+                Section("日期") {
+                    DatePicker("日期", selection: $mealDate, displayedComponents: .date)
                 }
                 Section("内容") {
                     TextEditor(text: $content)
@@ -557,6 +561,7 @@ struct MealEditView: View {
                         kcalText = String(format: "%.0f", k)
                     }
                 }
+                mealDate = WeightRecord.dateFormatter.date(from: meal?.date ?? dateStr) ?? Date()
             }
         }
     }
@@ -575,14 +580,20 @@ struct MealEditView: View {
 
         isBusy = true
         error = nil
+        let newDate = WeightRecord.dateFormatter.string(from: mealDate)
         Task {
             if let m = meal {
                 do {
-                    _ = try await APIClient.shared.updateMeal(id: m.id, date: m.date, type: type,
+                    _ = try await APIClient.shared.updateMeal(id: m.id, date: newDate, type: type,
                                                               content: content, kcal: kcalValue,
                                                               protein_g: m.protein_g, fat_g: m.fat_g,
                                                               carbs_g: m.carbs_g, image_url: m.image_url)
-                    await state.refreshMeals(date: m.date)
+                    await state.refreshMeals(date: newDate)
+                    // 改了日期：旧日期缓存作废，并让列表回到原来查看的那天
+                    if m.date != newDate {
+                        await state.invalidateMeals(date: m.date)
+                        await state.refreshMeals(date: dateStr)
+                    }
                     await MainActor.run {
                         isBusy = false
                         Haptics.success()
@@ -597,7 +608,7 @@ struct MealEditView: View {
                 }
             } else {
                 // 新增：断网自动进离线队列，不丢记录
-                let outcome = await state.saveMealResilient(date: dateStr, type: type, content: content,
+                let outcome = await state.saveMealResilient(date: newDate, type: type, content: content,
                                                             kcal: kcalValue, protein_g: nil, fat_g: nil,
                                                             carbs_g: nil, image_url: nil)
                 await MainActor.run {

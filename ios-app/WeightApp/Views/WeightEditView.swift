@@ -113,6 +113,8 @@ struct WeightEditView: View {
         let dateStr = WeightRecord.dateFormatter.string(from: date)
         let noteText = note.trimmingCharacters(in: .whitespacesAndNewlines)
         let oldDate = editing?.date
+        // 记完给个即时对比（和最近一条别的记录比）
+        let previousKg = state.sortedDesc.first(where: { $0.date != dateStr })?.kg
 
         // 乐观更新：本地立即生效并关闭面板，网络在后台完成
         Task {
@@ -120,6 +122,9 @@ struct WeightEditView: View {
             await MainActor.run {
                 Haptics.success()
                 dismiss()
+                if let prev = previousKg, abs(kg - prev) >= 0.1 {
+                    state.showToast(String(format: "已记录 %.1f kg，较上次 %+.1f kg", kg, kg - prev))
+                }
             }
             do {
                 _ = try await APIClient.shared.saveWeight(date: dateStr, kg: kg, note: noteText)

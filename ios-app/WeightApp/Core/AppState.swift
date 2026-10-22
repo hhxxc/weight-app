@@ -233,6 +233,14 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// 丢掉某天的饮食缓存（改了记录日期后，旧日期要重新拉）
+    @MainActor
+    func invalidateMeals(date: String) {
+        mealCache.removeValue(forKey: date)
+        CacheStore.remove("meals-\(date)")
+        if mealsDate == date { mealsDate = nil }
+    }
+
     /// 把某天的饮食汇总同步到「今日」指标（首页卡片）
     private func syncToday(from list: [MealRecord], date: String) {
         guard date == WeightRecord.dateFormatter.string(from: Date()) else { return }

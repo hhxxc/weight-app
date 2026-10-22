@@ -123,7 +123,27 @@ export async function recognizeFood(imageBase64) {
 
   // 新格式 {items:[...]}；模型若仍返回旧的单对象，也兼容
   const list = Array.isArray(j.items) && j.items.length ? j.items.slice(0, 6) : [j];
-  const items = list.map(normalizeFoodItem).filter((x) => x.food);
+  const cleaned = list.map(normalizeFoodItem)
+    .filter((x) => x.food && (x.kcal > 0 || x.weight_g > 0));
+
+  // 合并同名项（模型偶尔把同一道菜拆成两行）
+  const items = [];
+  const index = new Map();
+  for (const it of cleaned) {
+    const key = it.food.replace(/\s+/g, '');
+    if (index.has(key)) {
+      const t = items[index.get(key)];
+      t.weight_g += it.weight_g;
+      t.kcal += it.kcal;
+      t.protein_g = round1(t.protein_g + it.protein_g);
+      t.fat_g = round1(t.fat_g + it.fat_g);
+      t.carbs_g = round1(t.carbs_g + it.carbs_g);
+      t.converted_from_kj = t.converted_from_kj || it.converted_from_kj;
+    } else {
+      index.set(key, items.length);
+      items.push({ ...it });
+    }
+  }
   const anyConverted = items.some((x) => x.converted_from_kj);
   if (anyConverted) console.log('[ai] 识图能量单位疑似 kJ，已自动换算');
 
