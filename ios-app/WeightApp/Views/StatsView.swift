@@ -8,6 +8,7 @@ struct StatsView: View {
     @State private var loadingAdvice = false
     @State private var error: String?
     @State private var lastLoadAt: Date?
+    @State private var showReport = false
 
     private let adviceKey = "stats.advice.text"
     private let adviceStampKey = "stats.advice.stamp"
@@ -34,6 +35,22 @@ struct StatsView: View {
                 }
             }
             .navigationTitle("分析")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        Haptics.tap()
+                        showReport = true
+                    } label: {
+                        Text("周报")
+                    }
+                    .disabled(stats == nil)
+                }
+            }
+            .sheet(isPresented: $showReport) {
+                if let s = stats {
+                    WeeklyReportView(stats: s, weights: state.weights, user: state.user)
+                }
+            }
             .onAppear {
                 // 每次切回分析页都刷新（5 秒内重复进入不重复请求）
                 loadCachedAdvice()
