@@ -49,7 +49,17 @@ function publicUser(u) {
     height_cm: u.height_cm,
     target_kg: u.target_kg,
     daily_kcal_target: u.daily_kcal_target ?? null,
+    is_admin: u.is_admin ? 1 : 0,
   };
+}
+
+// 只有管理员能调用（家庭管理）
+function requireAdmin(req, res) {
+  if (!req.user || !req.user.is_admin) {
+    json(res, 403, { error: '仅管理员可操作' });
+    return false;
+  }
+  return true;
 }
 
 // 从请求里取鉴权后的用户；无效 token 返回 null
@@ -154,6 +164,33 @@ route('PUT', '/me', async (req, res) => {
     .run(nickname, height_cm, target_kg, daily_kcal_target, u.id);
   const nu = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
   json(res, 200, { user: publicUser(nu) });
+}, true);
+
+// ---- 家庭管理（仅管理员）----
+route('GET', '/admin/users', (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const rows = db.prepare(`
+    SELECT u.id, u.username, u.nickname, u.created_at, u.is_admin,
+           (SELECT COUNT(*) FROM weights w WHERE w.user_id = u.id) AS weight_count,
+           (SELECT COUNT(*) FROM meals m WHERE m.user_id = u.id)    AS meal_count
+    FROM users u
+    ORDER BY u.is_admin DESC, u.id ASC
+  `).all();
+  json(res, 200, { items: rows });
+}, true);
+
+route('POST', '/admin/users/:id/password', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return json(res, 400, { error: '用户 ID 无效' });
+  const target = db.prepare('SELECT id, username FROM users WHERE id = ?').get(id);
+  if (!target) return json(res, 404, { error: '用户不存在' });
+  const b = await readBody(req);
+  const pw = String(b.password || '');
+  if (pw.length < 4) return json(res, 400, { error: '密码至少 4 位' });
+  db.prepare('UPDATE users SET password = ? WHERE id = ?')
+    .run(bcrypt.hashSync(pw, BCRYPT_ROUNDS), id);
+  json(res, 200, { ok: true, username: target.username });
 }, true);
 
 // ---- 体重 ----

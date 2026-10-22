@@ -94,6 +94,10 @@ struct UserProfile: Codable, Equatable {
     var target_kg: Double?
     /// 每日热量目标（减脂期计划摄入），为空时按体重估算
     var daily_kcal_target: Double?
+    /// 1 = 管理员（可分配账号）
+    var is_admin: Int?
+
+    var isAdmin: Bool { (is_admin ?? 0) == 1 }
 }
 
 /// 每日热量目标：优先用手动设置值，没设置时按当前体重粗算（kg × 26，取整到 10）

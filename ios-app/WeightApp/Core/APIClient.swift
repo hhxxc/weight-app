@@ -272,6 +272,38 @@ final class APIClient {
         return r.item
     }
 
+    // MARK: - 家庭管理（仅管理员）
+
+    struct FamilyMember: Decodable, Identifiable {
+        let id: Int
+        let username: String
+        let nickname: String
+        let created_at: Int?
+        let is_admin: Int
+        let weight_count: Int
+        let meal_count: Int
+    }
+
+    private struct SimpleOK: Decodable { let ok: Bool? }
+
+    func fetchFamilyMembers() async throws -> [FamilyMember] {
+        let r: [String: [FamilyMember]] = try await request("GET", "/admin/users")
+        return r["items"] ?? []
+    }
+
+    /// 建号返回的 user 不含 token（账号由管理员分配，家人自己登录）
+    func createFamilyMember(username: String, password: String, nickname: String) async throws {
+        let _: [String: UserProfile] = try await request("POST", "/auth/register",
+            body: RegisterBody(username: username, password: password, nickname: nickname))
+    }
+
+    func resetPassword(userId: Int, password: String) async throws {
+        let _: SimpleOK = try await request("POST", "/admin/users/\(userId)/password",
+            body: ResetPasswordBody(password: password))
+    }
+
+    private struct ResetPasswordBody: Encodable { let password: String }
+
     // MARK: - 常吃食物
 
     struct FrequentMeal: Decodable, Identifiable {

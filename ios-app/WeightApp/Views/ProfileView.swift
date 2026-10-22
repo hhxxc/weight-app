@@ -58,6 +58,16 @@ struct ProfileView: View {
                     }
                 }
 
+                if state.user?.isAdmin == true {
+                    Section("家庭") {
+                        NavigationLink {
+                            FamilyView()
+                        } label: {
+                            Label("家庭管理", systemImage: "person.2.fill")
+                        }
+                    }
+                }
+
                 Section {
                     Toggle("每日称重提醒", isOn: $reminderOn)
                     if reminderOn {
