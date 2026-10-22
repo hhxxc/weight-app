@@ -40,6 +40,14 @@ struct FoodRecognizeView: View {
             .sheet(isPresented: $showLibrary) {
                 ImagePicker(sourceType: .photoLibrary) { img in pickedImage = img }
             }
+            .onAppear {
+                // 进入即呼出相机，无需再点「拍照」
+                if pickedImage == nil {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        showCamera = true
+                    }
+                }
+            }
         }
     }
 
