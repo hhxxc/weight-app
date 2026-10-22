@@ -3,7 +3,7 @@ import SwiftUI
 /// 分析页：体重/卡路里/营养汇总 + 趋势图 + AI 建议
 struct StatsView: View {
     @EnvironmentObject var state: AppState
-    @State private var stats: APIClient.StatsResponse?
+    @State private var stats: APIClient.StatsResponse? = CacheStore.load(APIClient.StatsResponse.self, "stats")
     @State private var advice: String?
     @State private var loadingAdvice = false
     @State private var error: String?
@@ -140,6 +140,7 @@ struct StatsView: View {
                 stats = s
                 error = nil
                 lastLoadAt = Date()
+                CacheStore.save(s, "stats")
             }
         } catch let err {
             await MainActor.run { error = err.localizedDescription }

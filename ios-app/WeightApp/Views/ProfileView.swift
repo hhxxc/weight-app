@@ -5,6 +5,8 @@ import UniformTypeIdentifiers
 struct ProfileView: View {
     @EnvironmentObject var state: AppState
     @State private var showImport = false
+    @State private var reminderOn = Reminder.isEnabled
+    @State private var reminderTime = Reminder.savedTime
 
     private var initial: String {
         let name = state.user?.nickname.isEmpty == false ? state.user!.nickname : state.user?.username ?? "?"
@@ -46,11 +48,36 @@ struct ProfileView: View {
                     Button { showImport = true } label: {
                         Label("从 Excel 导入体重", systemImage: "square.and.arrow.down")
                     }
+                    Button(action: exportWeights) {
+                        Label("导出体重 CSV", systemImage: "square.and.arrow.up")
+                    }
                     NavigationLink {
                         ServerSettingsView()
                     } label: {
                         Label("服务器设置", systemImage: "server.rack")
                     }
+                }
+
+                Section {
+                    Toggle("每日称重提醒", isOn: $reminderOn)
+                    if reminderOn {
+                        DatePicker("提醒时间", selection: $reminderTime, displayedComponents: .hourAndMinute)
+                    }
+                } header: {
+                    Text("提醒")
+                } footer: {
+                    Text("每天固定时间提醒称重；本地通知，断网也会响。")
+                }
+                .onChange(of: reminderOn) { on in
+                    if on {
+                        applyReminderTime()
+                    } else {
+                        Reminder.disable()
+                        Haptics.tap()
+                    }
+                }
+                .onChange(of: reminderTime) { _ in
+                    if reminderOn { applyReminderTime() }
                 }
 
                 Section("关于") {
@@ -78,6 +105,30 @@ struct ProfileView: View {
             }
         }
         .navigationViewStyle(.stack)
+    }
+
+    /// 导出体重 CSV 并调起系统分享（发给微信/存文件都行）
+    private func exportWeights() {
+        guard let url = DataExport.weightsCSV(state.weights, heightCm: state.user?.height_cm) else {
+            state.showToast("还没有可导出的体重记录")
+            return
+        }
+        IPAShare.share(fileURL: url, title: "体重记录导出")
+        Haptics.success()
+    }
+
+    /// 按当前选择的时间重新注册每日提醒
+    private func applyReminderTime() {
+        let c = Calendar.current.dateComponents([.hour, .minute], from: reminderTime)
+        Reminder.schedule(hour: c.hour ?? 7, minute: c.minute ?? 30) { ok in
+            guard !ok else { return }
+            Task {
+                await MainActor.run {
+                    reminderOn = false
+                    state.showToast("通知权限未开启，请到系统设置里允许")
+                }
+            }
+        }
     }
 }
 

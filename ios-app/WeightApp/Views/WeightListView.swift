@@ -5,17 +5,32 @@ struct WeightListView: View {
     @EnvironmentObject var state: AppState
     @State private var showAdd = false
     @State private var showTrend = false
-    @State private var showAllHistory = false
     @State private var pendingDelete: [WeightRecord] = []
     @State private var showDeleteConfirm = false
-
-    /// 首屏只渲染最近 30 条，其余按需展开（历史很长时列表更轻）
-    private static let pageSize = 30
+    @State private var visibleMonthCount = 3
 
     private var latest: WeightRecord? { state.sortedDesc.first }
 
-    private var visibleHistory: [WeightRecord] {
-        showAllHistory ? state.sortedDesc : Array(state.sortedDesc.prefix(Self.pageSize))
+    /// 历史记录按月分组（月份倒序），便于回看阶段性变化
+    private struct MonthGroup: Identifiable {
+        let id: String
+        let title: String
+        let items: [WeightRecord]
+        let average: Double
+    }
+
+    private var monthGroups: [MonthGroup] {
+        let grouped = Dictionary(grouping: state.sortedDesc) { String($0.date.prefix(7)) }
+        return grouped.keys.sorted(by: >).map { key in
+            let items = grouped[key] ?? []
+            let avg = items.isEmpty ? 0 : items.reduce(0.0) { $0 + $1.kg } / Double(items.count)
+            let parts = key.split(separator: "-")
+            var title = key
+            if parts.count == 2, let m = Int(parts[1]) {
+                title = "\(parts[0])年\(m)月"
+            }
+            return MonthGroup(id: key, title: title, items: items, average: avg)
+        }
     }
 
     private var forecast: TrendAnalysis.Forecast? {
@@ -186,20 +201,37 @@ struct WeightListView: View {
                 }
             }
 
-            // 历史记录
-            Section("历史记录（\(state.weights.count) 条）") {
-                ForEach(visibleHistory) { w in
-                    historyRow(w)
+            // 历史记录：按月分组，每月一行摘要
+            ForEach(Array(monthGroups.prefix(visibleMonthCount))) { g in
+                Section {
+                    ForEach(g.items) { w in
+                        historyRow(w)
+                    }
+                    .onDelete { offsets in
+                        requestDelete(offsets.map { g.items[$0] })
+                    }
+                } header: {
+                    HStack {
+                        Text(g.title)
+                        Spacer()
+                        Text(String(format: "%d 条 · 均 %.1f kg", g.items.count, g.average))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .textCase(nil)
                 }
-                .onDelete(perform: requestDelete)
+            }
 
-                if !showAllHistory && state.weights.count > Self.pageSize {
+            if monthGroups.count > visibleMonthCount {
+                Section {
                     Button {
-                        withAnimation { showAllHistory = true }
                         Haptics.tap()
+                        withAnimation { visibleMonthCount += 6 }
                     } label: {
                         HStack {
-                            Text("显示全部 \(state.weights.count) 条")
+                            Text("显示更早的 \(monthGroups.count - visibleMonthCount) 个月")
                             Spacer()
                             Image(systemName: "chevron.down").font(.caption)
                         }
@@ -299,8 +331,9 @@ struct WeightListView: View {
         return "删除这 \(pendingDelete.count) 条记录？"
     }
 
-    private func requestDelete(at offsets: IndexSet) {
-        pendingDelete = offsets.map { visibleHistory[$0] }
+    private func requestDelete(_ items: [WeightRecord]) {
+        guard !items.isEmpty else { return }
+        pendingDelete = items
         showDeleteConfirm = true
     }
 

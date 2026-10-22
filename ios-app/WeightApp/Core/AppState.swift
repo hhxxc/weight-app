@@ -19,6 +19,10 @@ final class AppState: ObservableObject {
         didSet { rebuildSorted() }
     }
     @Published var meals: [MealRecord] = []
+    /// meals 当前对应的日期（用于切日期时判断是否可直接使用）
+    @Published private(set) var mealsDate: String?
+    /// 饮食请求进行中（切到未缓存的日期时显示加载态）
+    @Published private(set) var isLoadingMeals = false
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var pendingUpdate: PendingUpdate?
@@ -29,6 +33,11 @@ final class AppState: ObservableObject {
     private(set) var sortedAsc: [WeightRecord] = []
     private(set) var sortedDesc: [WeightRecord] = []
     private var isSyncingPending = false
+
+    // 饮食：按日期的内存缓存 + 当前请求日期（防快速切日期时结果串台）
+    private var mealCache: [String: [MealRecord]] = [:]
+    private var mealCacheOrder: [String] = []
+    private var mealRequestDate: String?
 
     private init() {
         isLoggedIn = APIClient.shared.token != nil
@@ -91,6 +100,10 @@ final class AppState: ObservableObject {
         user = nil
         weights = []
         meals = []
+        mealsDate = nil
+        mealCache.removeAll()
+        mealCacheOrder.removeAll()
+        mealRequestDate = nil
         PendingSync.clear()
         CacheStore.clearAll()
         AppLogger.shared.log("退出登录")
@@ -103,6 +116,10 @@ final class AppState: ObservableObject {
         user = nil
         weights = []
         meals = []
+        mealsDate = nil
+        mealCache.removeAll()
+        mealCacheOrder.removeAll()
+        mealRequestDate = nil
         CacheStore.clearAll()
         AppLogger.shared.log("token 失效，强制登出")
     }
@@ -165,12 +182,81 @@ final class AppState: ObservableObject {
 
     @MainActor
     func refreshMeals(date: String? = nil) async {
+        guard let d = date else {
+            // 不传日期 = 全量（导出/统计等场景）
+            do {
+                meals = try await APIClient.shared.fetchMeals(date: nil)
+                mealsDate = nil
+            } catch APIError.unauthorized {
+                forceLogout()
+            } catch {
+                AppLogger.shared.log("刷新饮食失败：\(error.localizedDescription)")
+            }
+            return
+        }
+
+        // 1) 先用缓存秒出内容：内存 → 磁盘（离线也能看历史）
+        if let cached = mealCache[d] {
+            meals = cached
+            mealsDate = d
+        } else if let disk = CacheStore.load([MealRecord].self, "meals-\(d)") {
+            rememberMeals(d, disk)
+            meals = disk
+            mealsDate = d
+        }
+
+        // 2) 再拉最新；期间用户切了日期就丢弃这次结果，避免串台
+        mealRequestDate = d
+        isLoadingMeals = true
+        defer { if mealRequestDate == d { isLoadingMeals = false } }
         do {
-            meals = try await APIClient.shared.fetchMeals(date: date)
+            let fresh = try await APIClient.shared.fetchMeals(date: d)
+            guard mealRequestDate == d else { return }
+            meals = fresh
+            mealsDate = d
+            rememberMeals(d, fresh)
+            CacheStore.save(fresh, "meals-\(d)")
         } catch APIError.unauthorized {
             forceLogout()
         } catch {
-            AppLogger.shared.log("刷新饮食失败：\(error.localizedDescription)")
+            AppLogger.shared.log("刷新饮食失败(\(d))：\(error.localizedDescription)")
+        }
+    }
+
+    /// 同步取某天的缓存（内存优先，其次磁盘），用于切日期时零等待展示
+    func cachedMeals(for date: String) -> [MealRecord] {
+        if let m = mealCache[date] { return m }
+        if let disk = CacheStore.load([MealRecord].self, "meals-\(date)") {
+            mealCache[date] = disk
+            mealCacheOrder.removeAll { $0 == date }
+            mealCacheOrder.append(date)
+            return disk
+        }
+        return []
+    }
+
+    /// 预热相邻日期（不改动当前 meals），让前后翻页也瞬间出内容
+    @MainActor
+    func prefetchMeals(date: String) async {
+        if mealCache[date] != nil { return }
+        do {
+            let fresh = try await APIClient.shared.fetchMeals(date: date)
+            rememberMeals(date, fresh)
+            CacheStore.save(fresh, "meals-\(date)")
+        } catch {
+            // 预热失败无所谓，用户真正切过去时会再拉
+        }
+    }
+
+    /// 内存 LRU：只留最近 14 天，淘汰时连磁盘一起清，避免缓存无限增长
+    private func rememberMeals(_ date: String, _ list: [MealRecord]) {
+        mealCache[date] = list
+        mealCacheOrder.removeAll { $0 == date }
+        mealCacheOrder.append(date)
+        while mealCacheOrder.count > 14 {
+            let old = mealCacheOrder.removeFirst()
+            mealCache.removeValue(forKey: old)
+            CacheStore.remove("meals-\(old)")
         }
     }
 

@@ -301,19 +301,19 @@ final class APIClient {
 
     // MARK: - 统计 + AI 建议
 
-    struct StatsResponse: Decodable {
-        struct WeightStats: Decodable {
+    struct StatsResponse: Codable {
+        struct WeightStats: Codable {
             let start_kg: Double?; let current_kg: Double?; let target_kg: Double?
             let lost_kg: Double?; let height_cm: Double?; let bmi: Double?; let bmi_category: String?
             let record_count: Int
         }
-        struct CaloriesStats: Decodable {
+        struct CaloriesStats: Codable {
             let today_kcal: Double; let avg7_kcal: Double; let avg30_kcal: Double
         }
-        struct NutritionStats: Decodable {
+        struct NutritionStats: Codable {
             let avg7_protein_g: Double; let avg7_fat_g: Double; let avg7_carbs_g: Double
         }
-        struct DailyPoint: Decodable, Identifiable {
+        struct DailyPoint: Codable, Identifiable {
             var id: String { date }
             let date: String; let kg: Double?; let kcal: Double
             let protein_g: Double; let fat_g: Double; let carbs_g: Double

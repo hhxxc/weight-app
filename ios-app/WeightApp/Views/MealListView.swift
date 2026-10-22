@@ -15,7 +15,8 @@ struct MealListView: View {
 
     private var dateStr: String { WeightRecord.dateFormatter.string(from: selectedDate) }
     private var dayMeals: [MealRecord] {
-        state.meals.filter { $0.date == dateStr }
+        // 当前日期已加载就直接用；否则先取该日缓存，切日期不闪空
+        state.mealsDate == dateStr ? state.meals : state.cachedMeals(for: dateStr)
     }
 
     /// 当日营养合计
@@ -67,18 +68,24 @@ struct MealListView: View {
                 Divider()
 
                 if dayMeals.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "fork.knife")
-                            .font(.system(size: 50))
-                            .foregroundColor(.secondary)
-                        Text("今天还没记录饮食")
-                            .font(.headline)
-                        Text("点下方「拍照记饮食」，拍一张自动识别卡路里")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
+                    if state.isLoadingMeals && state.mealsDate != dateStr {
+                        ProgressView("加载中…")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        VStack(spacing: 12) {
+                            Image(systemName: "fork.knife")
+                                .font(.system(size: 50))
+                                .foregroundColor(.secondary)
+                            Text("这一天还没有记录饮食")
+                                .font(.headline)
+                            Text("点下方「拍照记饮食」，拍一张自动识别卡路里")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 30)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
                         ForEach(dayMeals) { m in
@@ -162,7 +169,13 @@ struct MealListView: View {
             .onChange(of: dateStr) { _ in
                 Task { await state.refreshMeals(date: dateStr) }
             }
-            .task { await state.refreshMeals(date: dateStr) }
+            .task {
+                await state.refreshMeals(date: dateStr)
+                // 预热昨天：往回翻一页也瞬间出内容
+                if let prev = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) {
+                    await state.prefetchMeals(date: WeightRecord.dateFormatter.string(from: prev))
+                }
+            }
         }
         .navigationViewStyle(.stack)
     }

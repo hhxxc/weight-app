@@ -34,7 +34,13 @@ enum CacheStore {
 
     /// 退出登录时清空全部缓存，避免换账号看到上一个人的数据
     static func clearAll() {
-        for name in ["weights", "user", "pendingWeights"] { remove(name) }
+        for name in ["weights", "user", "pendingWeights", "stats"] { remove(name) }
+        // 饮食按日期分文件缓存（meals-YYYY-MM-DD.json）
+        if let files = try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) {
+            for f in files where f.lastPathComponent.hasPrefix("meals-") {
+                try? FileManager.default.removeItem(at: f)
+            }
+        }
     }
 }
 
