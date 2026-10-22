@@ -61,7 +61,17 @@ SRC_LAST=""
 SRC_TAG=""
 SRC_OK=0   # 1 = 源码已是最新，本次无需动镜像
 
-if curl -sL -m 180 -o "$TMP_SRC" "$SRC_URL" 2>/dev/null && gzip -t "$TMP_SRC" 2>/dev/null; then
+# 下载失败很可能是 CI 正在 --clobber 替换资产（瞬间半包），重试一次即可
+SRC_DL=0
+for i in 1 2; do
+    if curl -sL -m 180 -o "$TMP_SRC" "$SRC_URL" 2>/dev/null && gzip -t "$TMP_SRC" 2>/dev/null; then
+        SRC_DL=1
+        break
+    fi
+    sleep 6
+done
+
+if [ "$SRC_DL" = "1" ]; then
     rm -rf /tmp/weight-src
     mkdir -p /tmp/weight-src
     if tar -xzf "$TMP_SRC" -C /tmp/weight-src 2>/dev/null; then
@@ -102,6 +112,8 @@ if curl -sL -m 180 -o "$TMP_SRC" "$SRC_URL" 2>/dev/null && gzip -t "$TMP_SRC" 2>
     fi
     rm -rf /tmp/weight-src
     rm -f "$TMP_SRC"
+else
+    log "WARN: 源码包下载/校验失败，回退镜像通道"
 fi
 
 # 源码已确认是最新的：直接结束。

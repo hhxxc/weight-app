@@ -41,18 +41,45 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LATEST="$(gh api "repos/${{ github.repository }}/releases?per_page=100" --jq '.[].tag_name' \
-            | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" \
-            | sed -E "s/^v//" \
-            | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)"
+          set -uo pipefail
+          bump() {
+            echo "$1" | awk -F. '{ if ($3 >= 9) printf "%d.%d.%d", $1, $2+1, 0; else printf "%d.%d.%d", $1, $2, $3+1 }'
+          }
+          # 取最大语义版本：API 可能抖动，重试 3 次
+          latest_from_api() {
+            for i in 1 2 3; do
+              V="$(gh api "repos/${{ github.repository }}/releases?per_page=100" --jq '.[].tag_name' 2>/dev/null \
+                | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sed -E "s/^v//" \
+                | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 || true)"
+              if [ -n "$V" ]; then echo "$V"; return 0; fi
+              sleep 3
+            done
+            return 1
+          }
+          # 兜底：git tag 里的最大版本
+          latest_from_git() {
+            git fetch --tags --force -q 2>/dev/null || true
+            git tag -l 'v*' | sed -E 's/^v//' | grep -E "^[0-9]+\.[0-9]+\.[0-9]+$" \
+              | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 || true
+          }
+          LATEST="$(latest_from_api || true)"
+          if [ -z "$LATEST" ]; then LATEST="$(latest_from_git)"; fi
           if [ -z "$LATEST" ]; then
             LATEST="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' ios-app/WeightApp/Info.plist)"
           fi
-          V="$(echo "$LATEST" | awk -F. '{ if ($3 >= 9) printf "%d.%d.0", $1, $2+1; else printf "%d.%d.%d", $1, $2, $3+1 }')"
-          if [ -z "$V" ]; then V="1.0.0"; fi
+          V="$(bump "$LATEST")"
+          if [ -z "$V" ]; then echo "版本号计算失败（LATEST=$LATEST）"; exit 1; fi
+          # 守卫：算出的版本必须大于任何已有 tag，否则说明拉取失败（曾经因此静默跳过发版）
+          MAXTAG="$(latest_from_git)"
+          if [ -n "$MAXTAG" ]; then
+            HIGHER="$(printf '%s\n%s\n' "$V" "$MAXTAG" | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)"
+            if [ "$HIGHER" != "$V" ]; then
+              echo "版本号异常：V=$V 不大于已有 tag $MAXTAG（LATEST=$LATEST）"; exit 1
+            fi
+          fi
           echo "app_version=$V" >> "$GITHUB_OUTPUT"
           echo "IPA_NAME=weight-app.ipa" >> "$GITHUB_ENV"
-          echo "==> 版本 $V，IPA 资产名 weight-app.ipa（固定）"
+          echo "==> 版本 $V（基于 $LATEST），IPA 资产名 weight-app.ipa（固定）"
 
       - name: Generate project.pbxproj
         working-directory: ios-app
