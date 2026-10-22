@@ -58,6 +58,8 @@ RUNNING=$(docker ps --filter name="$CONTAINER_NAME" --format '{{.Names}}' 2>/dev
 TMP_SRC="/tmp/weight-src.tar.gz"
 SRC_LAST=""
 [ -f "$SRC_ETAG_FILE" ] && SRC_LAST=$(cat "$SRC_ETAG_FILE" 2>/dev/null || echo "")
+SRC_TAG=""
+SRC_OK=0   # 1 = 源码已是最新，本次无需动镜像
 
 if curl -sL -m 180 -o "$TMP_SRC" "$SRC_URL" 2>/dev/null && gzip -t "$TMP_SRC" 2>/dev/null; then
     rm -rf /tmp/weight-src
@@ -65,40 +67,47 @@ if curl -sL -m 180 -o "$TMP_SRC" "$SRC_URL" 2>/dev/null && gzip -t "$TMP_SRC" 2>
     if tar -xzf "$TMP_SRC" -C /tmp/weight-src 2>/dev/null; then
         # 用「文件内容哈希」而不是 tar 的 md5：tar 带 mtime，纯 iOS 提交也会变
         SRC_TAG=$(cd /tmp/weight-src && find src -type f | sort | xargs md5sum 2>/dev/null | md5sum | cut -d' ' -f1)
-        if [ -n "$SRC_TAG" ] && [ "$SRC_TAG" != "$SRC_LAST" ] && [ -n "$RUNNING" ]; then
-            log "发现源码更新：$SRC_TAG（旧：${SRC_LAST:-无}），尝试快速部署"
-            LOCAL_PKG=$(md5sum /tmp/weight-src/package.json 2>/dev/null | cut -d' ' -f1)
-            REMOTE_PKG=$(docker exec "$CONTAINER_NAME" md5sum /app/package.json 2>/dev/null | cut -d' ' -f1)
-            if [ -n "$LOCAL_PKG" ] && [ "$LOCAL_PKG" = "$REMOTE_PKG" ]; then
-                OK=1
-                docker exec "$CONTAINER_NAME" rm -rf /app/src.new >> "$LOG" 2>&1 || OK=0
-                if [ "$OK" = "1" ]; then
-                    docker cp /tmp/weight-src/src "$CONTAINER_NAME":/app/src.new >> "$LOG" 2>&1 || OK=0
-                fi
-                if [ "$OK" = "1" ]; then
-                    docker exec "$CONTAINER_NAME" sh -c 'rm -rf /app/src && mv /app/src.new /app/src' >> "$LOG" 2>&1 || OK=0
-                fi
-                if [ "$OK" = "1" ]; then
-                    docker restart "$CONTAINER_NAME" >> "$LOG" 2>&1 || OK=0
-                fi
-                if [ "$OK" = "1" ]; then
-                    echo "$SRC_TAG" > "$SRC_ETAG_FILE"
-                    # 同时记下当前镜像 ETag，避免下一次巡检又去下 79MB
-                    IMG_TAG=$(curl -sI -L -m 60 "$ASSET_URL" 2>/dev/null | grep -iE '^(etag|content-length):' | tr '\n' ' ' | tr -d '\r')
-                    [ -n "$IMG_TAG" ] && echo "$IMG_TAG" > "$ETAG_FILE"
-                    log "快速部署完成（仅源码，秒级）：$SRC_TAG"
-                    docker ps --filter name="$CONTAINER_NAME" --format '{{.Names}} {{.Status}}' >> "$LOG" 2>&1
-                    rm -rf /tmp/weight-src "$TMP_SRC"
-                    exit 0
-                fi
-                log "WARN: 快速部署失败，回退镜像通道"
+        if [ -n "$SRC_TAG" ] && [ -n "$RUNNING" ]; then
+            if [ "$SRC_TAG" = "$SRC_LAST" ]; then
+                SRC_OK=1
             else
-                log "依赖有变化（package.json 不一致），回退镜像通道"
+                log "发现源码更新：$SRC_TAG（旧：${SRC_LAST:-无}），尝试快速部署"
+                LOCAL_PKG=$(md5sum /tmp/weight-src/package.json 2>/dev/null | cut -d' ' -f1)
+                REMOTE_PKG=$(docker exec "$CONTAINER_NAME" md5sum /app/package.json 2>/dev/null | cut -d' ' -f1)
+                if [ -n "$LOCAL_PKG" ] && [ "$LOCAL_PKG" = "$REMOTE_PKG" ]; then
+                    OK=1
+                    docker exec "$CONTAINER_NAME" rm -rf /app/src.new >> "$LOG" 2>&1 || OK=0
+                    if [ "$OK" = "1" ]; then
+                        docker cp /tmp/weight-src/src "$CONTAINER_NAME":/app/src.new >> "$LOG" 2>&1 || OK=0
+                    fi
+                    if [ "$OK" = "1" ]; then
+                        docker exec "$CONTAINER_NAME" sh -c 'rm -rf /app/src && mv /app/src.new /app/src' >> "$LOG" 2>&1 || OK=0
+                    fi
+                    if [ "$OK" = "1" ]; then
+                        docker restart "$CONTAINER_NAME" >> "$LOG" 2>&1 || OK=0
+                    fi
+                    if [ "$OK" = "1" ]; then
+                        echo "$SRC_TAG" > "$SRC_ETAG_FILE"
+                        log "快速部署完成（仅源码，秒级）：$SRC_TAG"
+                        docker ps --filter name="$CONTAINER_NAME" --format '{{.Names}} {{.Status}}' >> "$LOG" 2>&1
+                        rm -rf /tmp/weight-src "$TMP_SRC"
+                        exit 0
+                    fi
+                    log "WARN: 快速部署失败，回退镜像通道"
+                else
+                    log "依赖有变化（package.json 不一致），回退镜像通道"
+                fi
             fi
         fi
     fi
     rm -rf /tmp/weight-src
     rm -f "$TMP_SRC"
+fi
+
+# 源码已确认是最新的：直接结束。
+# 否则「纯 iOS 发版」也会因为镜像 tar 重新打包（ETag 变）而白下 79MB。
+if [ "$SRC_OK" = "1" ]; then
+    exit 0
 fi
 
 # ---------- 通道二：整镜像部署（依赖变化 / 首次 / 容器丢失） ----------
