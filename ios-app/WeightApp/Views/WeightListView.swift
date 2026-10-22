@@ -61,76 +61,71 @@ struct WeightListView: View {
     }
 
     private var list: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                // 渐变大卡片
+        List {
+            // 渐变大卡片（全宽，无分组边距）
+            Section {
                 OverviewCard(latest: latest, weights: state.weights, user: state.user)
-                    .cardShadow()
-
-                // 趋势图（内嵌小图）
-                if state.weights.count >= 2 {
-                    Theme.card {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text("体重趋势").font(.headline)
-                                Spacer()
-                                Text("\(String(format: "%.1f", sortedWeights.last!.kg)) → \(String(format: "%.1f", sortedWeights.first!.kg))")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            TrendChartView(weights: sortedWeights.reversed(), height: 150, showDetail: false)
-                        }
-                    }
-                    .cardShadow()
-                }
-
-                // 历史记录
-                Theme.card {
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text("历史记录（\(state.weights.count) 条）")
-                            .font(.headline)
-                            .padding(.bottom, 8)
-                        ForEach(Array(sortedWeights.enumerated()), id: \.element.id) { idx, w in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(w.date).font(.subheadline)
-                                    if !w.note.isEmpty {
-                                        Text(w.note).font(.caption).foregroundColor(.secondary)
-                                    }
-                                }
-                                Spacer()
-                                Text(String(format: "%.1f kg", w.kg)).font(.headline)
-                                if let bmi = w.bmi(heightCm: state.user?.height_cm) {
-                                    Text(String(format: "BMI %.1f", bmi))
-                                        .font(.caption).foregroundColor(.secondary)
-                                        .frame(width: 70, alignment: .trailing)
-                                }
-                            }
-                            .padding(.vertical, 8)
-                            .contextMenu {
-                                Button(role: .destructive) {
-                                    deleteWeight(w)
-                                } label: {
-                                    Label("删除这条记录", systemImage: "trash")
-                                }
-                            }
-                            if idx != sortedWeights.count - 1 {
-                                Divider()
-                            }
-                        }
-                    }
-                }
-                .cardShadow()
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
             }
-            .padding(16)
+
+            // 趋势图（内嵌小图）
+            if state.weights.count >= 2 {
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("体重趋势").font(.headline)
+                            Spacer()
+                            Text("\(String(format: "%.1f", sortedWeights.last!.kg)) → \(String(format: "%.1f", sortedWeights.first!.kg))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        TrendChartView(weights: sortedWeights.reversed(), height: 150, showDetail: false)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+
+            // 历史记录
+            Section("历史记录（\(state.weights.count) 条）") {
+                ForEach(sortedWeights) { w in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(w.date).font(.subheadline)
+                            if !w.note.isEmpty {
+                                Text(w.note).font(.caption).foregroundColor(.secondary)
+                            }
+                        }
+                        Spacer()
+                        Text(String(format: "%.1f kg", w.kg)).font(.headline)
+                        if let bmi = w.bmi(heightCm: state.user?.height_cm) {
+                            Text(String(format: "BMI %.1f", bmi))
+                                .font(.caption).foregroundColor(.secondary)
+                                .frame(width: 70, alignment: .trailing)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+                .onDelete(perform: deleteItems)
+            }
         }
-        .background(Color(UIColor.systemGroupedBackground))
+        .listStyle(.insetGrouped)
         .refreshable { await state.refreshWeights() }
     }
 
     private func deleteWeight(_ w: WeightRecord) {
         Task {
             try? await APIClient.shared.deleteWeight(date: w.date)
+            await state.refreshWeights()
+        }
+    }
+
+    private func deleteItems(at offsets: IndexSet) {
+        let items = offsets.map { sortedWeights[$0] }
+        Task {
+            for w in items {
+                try? await APIClient.shared.deleteWeight(date: w.date)
+            }
             await state.refreshWeights()
         }
     }
