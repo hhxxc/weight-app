@@ -341,11 +341,18 @@ final class APIClient {
 
     // MARK: - 食物识图 / 配料表 OCR / 图片上传
 
+    struct FoodItem: Decodable, Identifiable {
+        var id: String { "\(food)|\(weight_g)|\(kcal)" }
+        let food: String; let weight_g: Double
+        let kcal: Double; let protein_g: Double; let fat_g: Double; let carbs_g: Double
+    }
     struct FoodRecognition: Decodable {
         let food: String; let weight_g: Double
         let kcal: Double; let protein_g: Double; let fat_g: Double; let carbs_g: Double
         /// 服务端发现模型把千焦当千卡时自动换算并置 true
         var converted_from_kj: Bool?
+        /// 一图多样食物（旧服务端没有这个字段）
+        var items: [FoodItem]?
     }
     struct NutritionInfo: Decodable {
         let name: String; let energy_kj: Double; let energy_kcal: Double

@@ -66,62 +66,78 @@ function extractJSON(text) {
 }
 
 // 食物识图：识别食物名 + 估算克数 + 卡路里 + 营养
+// 能量单位兜底：任何食物能量密度都在 0~9.2 kcal/g（纯油脂约 9）。
+// 超过就说明模型把营养标签上的「千焦 kJ」当成了「千卡」。
+export function fixEnergyUnit(kcal, weight) {
+  const k = Number(kcal) || 0;
+  const w = Number(weight) || 0;
+  if (w > 0) {
+    if (k / w <= 9.2) return { kcal: k, converted: false };
+    let v = k / 4.184;                       // 假设模型给的是这份食物的 kJ 总量
+    if (v / w > 9.2) v = (v * w) / 100;      // 仍不合理 → 原值其实是「每 100g」，按份量折算
+    return { kcal: v, converted: true };
+  }
+  if (k > 900) return { kcal: k / 4.184, converted: true };  // 无克数：每 100g 上限
+  return { kcal: k, converted: false };
+}
+
+const round1 = (v) => Math.round((Number(v) || 0) * 10) / 10;
+
+function normalizeFoodItem(o) {
+  const weight = Number(o.weight_g) || 0;
+  const fixed = fixEnergyUnit(o.kcal, weight);
+  return {
+    food: String(o.food || '').trim(),
+    weight_g: Math.round(weight),
+    kcal: Math.round(fixed.kcal),
+    protein_g: round1(o.protein_g),
+    fat_g: round1(o.fat_g),
+    carbs_g: round1(o.carbs_g),
+    converted_from_kj: fixed.converted,
+  };
+}
+
+// 食物识图：识别照片里所有食物（一盘多样也能分开），估算克数 + 营养
 export async function recognizeFood(imageBase64) {
   const prompt = [
-    '这是一张食物或食品包装的照片。请完成三件事：',
-    '1) 识别食物名称（包装食品尽量写成「品牌 + 品名」）；',
-    '2) 估算这次实际吃的克数（包装食品按净含量或一份的量）；',
-    '3) 给出这份食物的能量与蛋白质、脂肪、碳水。',
+    '这是一张食物或食品包装的照片。请识别照片里所有能吃的东西：',
+    '- 如果是一盘/一桌有多样食物，请分开列出，每样单独估算克数和营养（最多 6 样）；',
+    '- 如果只有一个包装食品，就只列一项（按标签每 100g 数据乘以实际克数）。',
     '',
     '能量单位必须严格遵守：',
-    '- 中国/欧盟营养标签上的能量常常是「千焦 kJ」，1 千卡 kcal = 4.184 千焦。',
-    '- 看到的是 kJ 时，必须先除以 4.184 换算成 kcal 再填到 kcal 字段，',
-    '  绝对不允许把千焦的数字直接当作千卡（那会高估 4 倍以上）。',
-    '- 标签一般是「每 100 克」，要按实际克数折算：kcal = 每100g kcal × 克数 ÷ 100。',
-    '- 任何食物能量密度都在 0~900 kcal/100g 之间；若算出的值超过这个范围，',
-    '  说明单位换算错了，请重新计算后再输出。',
+    '- 营养标签上的能量常常是「千焦 kJ」，1 千卡 kcal = 4.184 千焦；',
+    '- 看到 kJ 必须先除以 4.184 换算成 kcal 再填，绝对不允许把千焦数字当千卡（会高估 4 倍以上）；',
+    '- 任何食物能量密度都在 0~900 kcal/100g 之间，若算出的值超出范围，说明单位错了，请重算。',
     '',
-    '只输出 JSON，不要任何多余文字，格式：{"food":"","weight_g":0,"kcal":0,"protein_g":0,"fat_g":0,"carbs_g":0}',
+    '只输出 JSON，不要任何多余文字，格式：',
+    '{"items":[{"food":"","weight_g":0,"kcal":0,"protein_g":0,"fat_g":0,"carbs_g":0}]}',
   ].join('\n');
   const raw = await chat(FOOD_MODEL, prompt, imageBase64);
   const j = extractJSON(raw);
   if (!j) {
-    // 模型没按 JSON 返回：兜底返回完整结构，避免客户端解码失败
-    return { food: String(raw || '').trim().slice(0, 100), weight_g: 0, kcal: 0, protein_g: 0, fat_g: 0, carbs_g: 0, converted_from_kj: false };
+    return {
+      items: [], food: String(raw || '').trim().slice(0, 100),
+      weight_g: 0, kcal: 0, protein_g: 0, fat_g: 0, carbs_g: 0, converted_from_kj: false,
+    };
   }
 
-  const round1 = (v) => Math.round((Number(v) || 0) * 10) / 10;
-  const weight = Number(j.weight_g) || 0;
-  let kcal = Number(j.kcal) || 0;
-  let converted = false;
+  // 新格式 {items:[...]}；模型若仍返回旧的单对象，也兼容
+  const list = Array.isArray(j.items) && j.items.length ? j.items.slice(0, 6) : [j];
+  const items = list.map(normalizeFoodItem).filter((x) => x.food);
+  const anyConverted = items.some((x) => x.converted_from_kj);
+  if (anyConverted) console.log('[ai] 识图能量单位疑似 kJ，已自动换算');
 
-  // 服务端兜底：任何食物能量密度都不可能超过 9.2 kcal/g（纯油脂约 9）。
-  // 超了说明模型把营养标签上的「千焦」当成了「千卡」，这里换回来。
-  if (weight > 0) {
-    if (kcal / weight > 9.2) {
-      let k = kcal / 4.184;                 // 假设模型给的是这份食物的 kJ 总量
-      if (k / weight > 9.2) {
-        k = (k * weight) / 100;             // 仍不合理 → 原值其实是「每 100g」，按份量折算
-      }
-      console.log(`[ai] 识图能量单位疑似 kJ：${kcal} → ${Math.round(k)} kcal / ${weight} g`);
-      kcal = k;
-      converted = true;
-    }
-  } else if (kcal > 900) {
-    // 没有克数（多半是拍的营养成分表）：每 100g 不可能超过 900 kcal
-    kcal = kcal / 4.184;
-    converted = true;
-    console.log(`[ai] 识图能量单位疑似 kJ（无克数）：换算为 ${Math.round(kcal)} kcal/100g`);
-  }
-
+  const sum = (key) => items.reduce((a, b) => a + (Number(b[key]) || 0), 0);
   return {
-    food: String(j.food || '').trim(),
-    weight_g: Math.round(weight),
-    kcal: Math.round(kcal),
-    protein_g: round1(j.protein_g),
-    fat_g: round1(j.fat_g),
-    carbs_g: round1(j.carbs_g),
-    converted_from_kj: converted,
+    items,
+    // 兼容旧客户端：整体视为一条
+    food: items.map((x) => x.food).join('、').slice(0, 100),
+    weight_g: Math.round(sum('weight_g')),
+    kcal: Math.round(sum('kcal')),
+    protein_g: round1(sum('protein_g')),
+    fat_g: round1(sum('fat_g')),
+    carbs_g: round1(sum('carbs_g')),
+    converted_from_kj: anyConverted,
   };
 }
 
