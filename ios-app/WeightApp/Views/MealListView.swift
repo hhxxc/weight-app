@@ -591,7 +591,7 @@ struct MealEditView: View {
                     await state.refreshMeals(date: newDate)
                     // 改了日期：旧日期缓存作废，并让列表回到原来查看的那天
                     if m.date != newDate {
-                        await state.invalidateMeals(date: m.date)
+                        state.invalidateMeals(date: m.date)
                         await state.refreshMeals(date: dateStr)
                     }
                     await MainActor.run {
