@@ -224,6 +224,15 @@ final class APIClient {
         let _: [String: Bool] = try await request("DELETE", "/meals/\(id)")
     }
 
+    func updateMeal(id: Int, date: String, type: String, content: String,
+                    kcal: Double? = nil, protein_g: Double? = nil, fat_g: Double? = nil,
+                    carbs_g: Double? = nil, image_url: String? = nil) async throws -> MealRecord {
+        let r: MealItemResponse = try await request("PUT", "/meals/\(id)", body: MealBody(
+            date: date, type: type, content: content,
+            kcal: kcal, protein_g: protein_g, fat_g: fat_g, carbs_g: carbs_g, image_url: image_url))
+        return r.item
+    }
+
     // MARK: - 食物识图 / 配料表 OCR / 图片上传
 
     struct FoodRecognition: Decodable {

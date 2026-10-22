@@ -207,6 +207,28 @@ route('DELETE', '/meals/:id', (req, res) => {
   json(res, 200, { ok: true });
 }, true);
 
+// 编辑饮食记录（部分更新：只更新传入的字段）
+route('PUT', '/meals/:id', async (req, res) => {
+  const b = await readBody(req);
+  const existing = db.prepare('SELECT * FROM meals WHERE id=? AND user_id=?').get(+req.params.id, req.user.id);
+  if (!existing) return json(res, 404, { error: '记录不存在' });
+  const date = toDate(b.date) || existing.date;
+  const type = ['breakfast', 'lunch', 'dinner', 'snack'].includes(b.type) ? b.type : existing.type;
+  const content = b.content !== undefined ? String(b.content).trim() : existing.content;
+  if (!content) return json(res, 400, { error: '内容不能为空' });
+  const num = (v) => (v === null || v === undefined || v === '' ? null : +v);
+  const kcal = b.kcal !== undefined ? num(b.kcal) : existing.kcal;
+  const protein_g = b.protein_g !== undefined ? num(b.protein_g) : existing.protein_g;
+  const fat_g = b.fat_g !== undefined ? num(b.fat_g) : existing.fat_g;
+  const carbs_g = b.carbs_g !== undefined ? num(b.carbs_g) : existing.carbs_g;
+  const image_url = b.image_url !== undefined ? (String(b.image_url).slice(0, 500) || null) : existing.image_url;
+  db.prepare('UPDATE meals SET date=?, type=?, content=?, kcal=?, protein_g=?, fat_g=?, carbs_g=?, image_url=? WHERE id=? AND user_id=?')
+    .run(date, type, content.slice(0, 500), kcal, protein_g, fat_g, carbs_g, image_url, +req.params.id, req.user.id);
+  const row = db.prepare('SELECT id,date,type,content,kcal,protein_g,fat_g,carbs_g,image_url FROM meals WHERE id=?')
+    .get(+req.params.id);
+  json(res, 200, { item: row });
+}, true);
+
 // ---- 食物识图 / 配料表 OCR ----
 function bodyImage(b) {
   return String(b.image_base64 || b.image || '').replace(/^data:image\/\w+;base64,/, '');
@@ -342,6 +364,7 @@ const server = http.createServer(async (req, res) => {
     const params = match(r.pattern, apiPath);
     if (!params) continue;
     req.query = url.searchParams;
+    req.params = params;   // 供 handler 用 req.params.xxx 访问路径参数
     if (r.auth) {
       const user = authUser(req);
       if (!user) return json(res, 401, { error: '未登录或登录已过期' });

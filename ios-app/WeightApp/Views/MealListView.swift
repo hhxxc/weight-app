@@ -8,6 +8,7 @@ struct MealListView: View {
     @State private var showAdd = false
     @State private var showFoodRecognize = false
     @State private var showNutritionOCR = false
+    @State private var editingMeal: MealRecord?
 
     private var dateStr: String { WeightRecord.dateFormatter.string(from: selectedDate) }
     private var dayMeals: [MealRecord] {
@@ -66,8 +67,13 @@ struct MealListView: View {
                                     }
                                 }
                                 Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
                             .padding(.vertical, 4)
+                            .contentShape(Rectangle())
+                            .onTapGesture { editingMeal = m }
                         }
                         .onDelete(perform: deleteItems)
                     }
@@ -88,6 +94,9 @@ struct MealListView: View {
             }
             .sheet(isPresented: $showAdd) {
                 MealEditView(dateStr: dateStr)
+            }
+            .sheet(item: $editingMeal) { m in
+                MealEditView(dateStr: m.date, meal: m)
             }
             .sheet(isPresented: $showFoodRecognize) {
                 FoodRecognizeView(dateStr: dateStr)
@@ -129,18 +138,21 @@ struct MealListView: View {
     }
 }
 
-/// 饮食录入
+/// 饮食录入 / 编辑（传入 meal 则为编辑模式）
 struct MealEditView: View {
     @EnvironmentObject var state: AppState
     @Environment(\.dismiss) private var dismiss
 
     let dateStr: String
+    var meal: MealRecord? = nil   // 编辑模式：传入要编辑的记录
+
     @State private var type = "breakfast"
     @State private var content = ""
     @State private var isBusy = false
     @State private var error: String?
 
     private let types = [("breakfast", "早餐"), ("lunch", "午餐"), ("dinner", "晚餐"), ("snack", "加餐")]
+    private var isEditing: Bool { meal != nil }
 
     var body: some View {
         NavigationView {
@@ -159,7 +171,7 @@ struct MealEditView: View {
                     Section { Text(error).foregroundColor(.red) }
                 }
             }
-            .navigationTitle("记录饮食")
+            .navigationTitle(isEditing ? "编辑饮食" : "记录饮食")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -167,6 +179,12 @@ struct MealEditView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存", action: save).disabled(isBusy || content.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+            .onAppear {
+                if let m = meal {
+                    type = m.type
+                    content = m.content
                 }
             }
         }
@@ -177,8 +195,15 @@ struct MealEditView: View {
         Task {
             defer { isBusy = false }
             do {
-                _ = try await APIClient.shared.saveMeal(date: dateStr, type: type, content: content)
-                await state.refreshMeals(date: dateStr)
+                if let m = meal {
+                    _ = try await APIClient.shared.updateMeal(id: m.id, date: m.date, type: type,
+                                                              content: content, kcal: m.kcal,
+                                                              protein_g: m.protein_g, fat_g: m.fat_g,
+                                                              carbs_g: m.carbs_g, image_url: m.image_url)
+                } else {
+                    _ = try await APIClient.shared.saveMeal(date: dateStr, type: type, content: content)
+                }
+                await state.refreshMeals(date: meal?.date ?? dateStr)
                 await MainActor.run { dismiss() }
             } catch let err {
                 await MainActor.run { error = err.localizedDescription }
