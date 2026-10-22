@@ -194,6 +194,7 @@ struct NutritionOCRView: View {
         Task {
             defer { saving = false }
             do {
+                let clientId = UUID().uuidString
                 var imageURL: String? = nil
                 if let img = pickedImage, let b64 = ImageUtil.jpegBase64(img, maxDimension: 800, quality: 0.6) {
                     imageURL = try await APIClient.shared.uploadImage(imageBase64: b64, ext: "jpg")
