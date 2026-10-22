@@ -13,5 +13,6 @@ struct MainTabView: View {
             ProfileView()
                 .tabItem { Label("我的", systemImage: "person.circle") }
         }
+        .accentColor(Theme.brandDeep)
     }
 }

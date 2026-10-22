@@ -15,17 +15,31 @@ struct TrendChartView: View {
         GeometryReader { geo in
             let pts = normalizedPoints(in: geo.size)
             ZStack {
+                // 渐变填充面积
+                if pts.count > 1 {
+                    TrendFill(points: pts)
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Theme.brandCyan.opacity(0.25),
+                                    Theme.brandCyan.opacity(0.0),
+                                ]),
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                }
                 // 背景网格
                 if showDetail {
                     grid(in: geo.size)
                 }
                 // 折线
                 TrendPath(points: pts, range: range, minKg: minKg)
-                    .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                    .stroke(Theme.brandDeep, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
                 // 数据点
                 ForEach(Array(pts.enumerated()), id: \.offset) { idx, p in
                     Circle()
-                        .fill(Color.accentColor)
+                        .fill(Theme.brandDeep)
                         .frame(width: idx == pts.count - 1 ? 8 : 5, height: idx == pts.count - 1 ? 8 : 5)
                         .position(p)
                 }
@@ -71,6 +85,25 @@ struct TrendPath: Shape {
         for p in points.dropFirst() {
             path.addLine(to: p)
         }
+        return path
+    }
+}
+
+/// 折线下方到图底的填充面积（渐变填充用）
+struct TrendFill: Shape {
+    let points: [CGPoint]
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        guard let first = points.first else { return path }
+        path.move(to: CGPoint(x: first.x, y: rect.height))
+        path.addLine(to: first)
+        for p in points.dropFirst() {
+            path.addLine(to: p)
+        }
+        guard let last = points.last else { return path }
+        path.addLine(to: CGPoint(x: last.x, y: rect.height))
+        path.closeSubpath()
         return path
     }
 }

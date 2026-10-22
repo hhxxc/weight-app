@@ -6,24 +6,39 @@ struct ProfileView: View {
     @EnvironmentObject var state: AppState
     @State private var showImport = false
 
+    private var initial: String {
+        let name = state.user?.nickname.isEmpty == false ? state.user!.nickname : state.user?.username ?? "?"
+        return String(name.prefix(1))
+    }
+
     var body: some View {
         NavigationView {
             List {
-                // 个人资料
-                Section("个人资料") {
+                // 个人资料头部卡片
+                Section {
                     NavigationLink(destination: ProfileEditView()) {
-                        HStack {
-                            Image(systemName: "person.circle.fill")
-                                .font(.title2)
-                                .foregroundColor(.accentColor)
-                            VStack(alignment: .leading) {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                Circle()
+                                    .fill(Theme.brandGradient)
+                                    .frame(width: 56, height: 56)
+                                Text(initial)
+                                    .font(.title2.bold())
+                                    .foregroundColor(.white)
+                            }
+                            VStack(alignment: .leading, spacing: 3) {
                                 Text(state.user?.nickname.isEmpty == false ? state.user!.nickname : state.user?.username ?? "未登录")
                                     .font(.headline)
-                                Text(state.user?.username ?? "")
+                                Text("@\(state.user?.username ?? "")")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
+                        .padding(.vertical, 6)
                     }
                 }
 

@@ -61,66 +61,82 @@ struct WeightListView: View {
     }
 
     private var list: some View {
-        List {
-            // 概览卡片
-            Section {
+        ScrollView {
+            VStack(spacing: 16) {
+                // 渐变大卡片
                 OverviewCard(latest: latest, weights: state.weights, user: state.user)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-            }
+                    .cardShadow()
 
-            // 趋势图（内嵌小图）
-            if state.weights.count >= 2 {
-                Section {
-                    TrendChartView(weights: sortedWeights.reversed(), height: 160, showDetail: false)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
-                }
-            }
-
-            // 历史记录
-            Section("历史记录（\(state.weights.count) 条）") {
-                ForEach(sortedWeights) { w in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(w.date)
-                                .font(.subheadline)
-                            if !w.note.isEmpty {
-                                Text(w.note)
+                // 趋势图（内嵌小图）
+                if state.weights.count >= 2 {
+                    Theme.card {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("体重趋势").font(.headline)
+                                Spacer()
+                                Text("\(String(format: "%.1f", sortedWeights.last!.kg)) → \(String(format: "%.1f", sortedWeights.first!.kg))")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                        }
-                        Spacer()
-                        Text(String(format: "%.1f kg", w.kg))
-                            .font(.headline)
-                        if let bmi = w.bmi(heightCm: state.user?.height_cm) {
-                            Text(String(format: "BMI %.1f", bmi))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .frame(width: 70, alignment: .trailing)
+                            TrendChartView(weights: sortedWeights.reversed(), height: 150, showDetail: false)
                         }
                     }
-                    .padding(.vertical, 2)
+                    .cardShadow()
                 }
-                .onDelete(perform: deleteItems)
+
+                // 历史记录
+                Theme.card {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("历史记录（\(state.weights.count) 条）")
+                            .font(.headline)
+                            .padding(.bottom, 8)
+                        ForEach(Array(sortedWeights.enumerated()), id: \.element.id) { idx, w in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(w.date).font(.subheadline)
+                                    if !w.note.isEmpty {
+                                        Text(w.note).font(.caption).foregroundColor(.secondary)
+                                    }
+                                }
+                                Spacer()
+                                Text(String(format: "%.1f kg", w.kg)).font(.headline)
+                                if let bmi = w.bmi(heightCm: state.user?.height_cm) {
+                                    Text(String(format: "BMI %.1f", bmi))
+                                        .font(.caption).foregroundColor(.secondary)
+                                        .frame(width: 70, alignment: .trailing)
+                                }
+                            }
+                            .padding(.vertical, 8)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    deleteWeight(w)
+                                } label: {
+                                    Label("删除这条记录", systemImage: "trash")
+                                }
+                            }
+                            if idx != sortedWeights.count - 1 {
+                                Divider()
+                            }
+                        }
+                    }
+                }
+                .cardShadow()
             }
+            .padding(16)
         }
-        .listStyle(.insetGrouped)
+        .background(Color(UIColor.systemGroupedBackground))
         .refreshable { await state.refreshWeights() }
     }
 
-    private func deleteItems(at offsets: IndexSet) {
-        let items = offsets.map { sortedWeights[$0] }
+    private func deleteWeight(_ w: WeightRecord) {
         Task {
-            for w in items {
-                try? await APIClient.shared.deleteWeight(date: w.date)
-            }
+            try? await APIClient.shared.deleteWeight(date: w.date)
             await state.refreshWeights()
         }
     }
 }
 
-/// 概览卡片：最新体重、BMI、目标进度
+/// 概览卡片：最新体重、BMI、目标进度（蓝青渐变品牌卡）
 struct OverviewCard: View {
     let latest: WeightRecord?
     let weights: [WeightRecord]
@@ -131,79 +147,71 @@ struct OverviewCard: View {
         return BMI.value(kg: l.kg, heightCm: h)
     }
 
+    private var lostKg: Double {
+        guard let first = weights.min(by: { $0.date < $1.date }), let l = latest else { return 0 }
+        return first.kg - l.kg
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 0) {
+            // 顶部标签行
             HStack {
-                Text("最新体重")
+                Text(latest?.date ?? "当前体重")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.white.opacity(0.9))
                 Spacer()
-                if let l = latest {
-                    Text(l.date)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                if let bmi = currentBmi {
+                    Theme.pill("BMI \(String(format: "%.1f", bmi)) · \(BMI.level(bmi).rawValue)")
                 }
             }
 
-            HStack(alignment: .firstTextBaseline) {
+            // 大号体重
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(latest.map { String(format: "%.1f", $0.kg) } ?? "--")
-                    .font(.system(size: 44, weight: .bold, design: .rounded))
+                    .font(.system(size: 56, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
                 Text("kg")
                     .font(.headline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.white.opacity(0.85))
                 Spacer()
             }
+            .padding(.top, 4)
 
-            if let bmi = currentBmi {
-                let level = BMI.level(bmi)
-                HStack(spacing: 8) {
-                    Text("BMI")
-                        .foregroundColor(.secondary)
-                    Text(String(format: "%.1f", bmi))
-                        .font(.title3.bold())
-                    Text(level.rawValue)
-                        .font(.caption.bold())
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Color(hex: level.colorHex))
-                        .cornerRadius(10)
+            // 已减标签
+            if lostKg > 0.05 {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.caption)
+                    Text("已减 \(String(format: "%.1f", lostKg)) kg")
+                        .font(.subheadline.bold())
                 }
-            } else if user?.height_cm == nil {
-                Text("在「我的」里填身高后自动计算 BMI")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                .foregroundColor(.white)
+                .padding(.top, 8)
             }
 
-            // 目标进度
-            if let target = user?.target_kg, let l = latest {
-                let diff = l.kg - target
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("目标 \(String(format: "%.1f", target)) kg")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        if abs(diff) < 0.05 {
-                            Text("已达标 🎉").font(.caption.bold()).foregroundColor(.green)
-                        } else if diff > 0 {
-                            Text("还需减 \(String(format: "%.1f", diff)) kg").font(.caption).foregroundColor(.orange)
-                        } else {
-                            Text("已低于目标 \(String(format: "%.1f", -diff)) kg").font(.caption).foregroundColor(.blue)
-                        }
-                    }
-                    if diff > 0 {
-                        ProgressView(value: target, total: l.kg)
-                            .tint(.orange)
-                    }
-                }
+            // 底部三格：起始 / 目标 / 已减
+            HStack(spacing: 0) {
+                miniStat("起始", weights.min(by: { $0.date < $1.date })?.kg)
+                miniStat("目标", user?.target_kg)
+                miniStat("已减", lostKg, signed: true)
             }
+            .padding(.top, 16)
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.accentColor.opacity(0.08))
-        )
+        .padding(22)
+        .background(Theme.brandGradient)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func miniStat(_ title: String, _ v: Double?, signed: Bool = false) -> some View {
+        VStack(spacing: 3) {
+            Text(v == nil ? "—" : String(format: signed ? "%+.1f" : "%.1f", v!))
+                .font(.title3.bold())
+                .foregroundColor(.white)
+                .monospacedDigit()
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.8))
+        }
+        .frame(maxWidth: .infinity)
     }
 }

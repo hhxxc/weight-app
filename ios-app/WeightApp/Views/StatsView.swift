@@ -182,13 +182,17 @@ struct StatsView: View {
     private var adviceCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("AI 建议").font(.headline)
+                Label("AI 建议", systemImage: "sparkles")
+                    .font(.headline)
+                    .foregroundColor(Theme.brandDeep)
                 Spacer()
                 Button(action: generateAdvice) {
                     if loadingAdvice {
                         ProgressView().scaleEffect(0.8)
                     } else {
-                        Label(advice == nil ? "生成" : "刷新", systemImage: "sparkles").font(.caption)
+                        Text(advice == nil ? "生成" : "刷新")
+                            .font(.caption.bold())
+                            .foregroundColor(Theme.brandBlue)
                     }
                 }
                 .disabled(loadingAdvice)
@@ -204,7 +208,18 @@ struct StatsView: View {
             }
         }
         .padding(16)
-        .background(cardBg)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color(hex: "EEF2FF"), Color(hex: "E0F7FA")]),
+                        startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color(hex: "DBEAFE"), lineWidth: 1)
+        )
     }
 
     private func generateAdvice() {
@@ -222,15 +237,15 @@ struct StatsView: View {
 
     private func bmiColor(_ cat: String) -> Color {
         switch cat {
-        case "偏瘦": return .blue
-        case "正常": return .green
-        case "超重": return .orange
-        default: return .red
+        case "偏瘦": return Theme.brandBlue
+        case "正常": return Theme.success
+        case "超重": return Theme.warning
+        default: return Theme.danger
         }
     }
 
     private var cardBg: some View {
-        RoundedRectangle(cornerRadius: 12).fill(Color(UIColor.secondarySystemGroupedBackground))
+        RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(UIColor.secondarySystemGroupedBackground))
     }
 }
 
@@ -243,8 +258,16 @@ struct KcalBarChart: View {
         let maxKcal = max(points.map { $0.kcal }.max() ?? 1, 1)
         HStack(alignment: .bottom, spacing: 2) {
             ForEach(Array(points.enumerated()), id: \.offset) { _, p in
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(p.kcal > 0 ? Color.orange : Color.gray.opacity(0.15))
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(
+                        p.kcal > 0
+                            ? LinearGradient(
+                                gradient: Gradient(colors: [Theme.brandCyan, Theme.brandBlue]),
+                                startPoint: .top, endPoint: .bottom)
+                            : LinearGradient(
+                                gradient: Gradient(colors: [Color.gray.opacity(0.15), Color.gray.opacity(0.15)]),
+                                startPoint: .top, endPoint: .bottom)
+                    )
                     .frame(height: p.kcal > 0 ? max(2, CGFloat(p.kcal / maxKcal) * (height - 16)) : 2)
                     .frame(maxWidth: .infinity)
             }

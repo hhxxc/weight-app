@@ -13,59 +13,79 @@ struct LoginView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 20) {
-                    // 图标 + 标题
-                    VStack(spacing: 8) {
+                VStack(spacing: 0) {
+                    // 渐变大 banner
+                    VStack(spacing: 10) {
                         Image(systemName: "scalemass.fill")
-                            .font(.system(size: 56))
-                            .foregroundColor(.accentColor)
+                            .font(.system(size: 52))
+                            .foregroundColor(.white)
                         Text("体重记录")
                             .font(.largeTitle.bold())
-                        Text("登录你的账号")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white)
+                        Text("记录每一天，遇见更好的自己")
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.85))
                     }
-                    .padding(.top, 40)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 56)
+                    .padding(.bottom, 60)
+                    .background(Theme.brandGradient)
+                    .clipShape(
+                        // 底部大圆角
+                        RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    )
+                    .ignoresSafeArea(edges: .top)
 
-                    VStack(spacing: 14) {
+                    // 登录表单
+                    VStack(spacing: 16) {
                         TextField("用户名", text: $username)
                             .textFieldStyle(.roundedBorder)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
+                            .padding(.vertical, 4)
                         SecureField("密码", text: $password)
                             .textFieldStyle(.roundedBorder)
+                            .padding(.vertical, 4)
                         TextField("服务器地址（留空用默认）", text: $server)
                             .textFieldStyle(.roundedBorder)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
                             .font(.footnote)
-                    }
-                    .padding(.horizontal, 24)
 
-                    if let error {
-                        Text(error)
-                            .font(.footnote)
-                            .foregroundColor(.red)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 24)
-                    }
-
-                    Button(action: submit) {
-                        if isBusy {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
-                        } else {
-                            Text("登录")
-                                .font(.headline)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
+                        if let error {
+                            Text(error)
+                                .font(.footnote)
+                                .foregroundColor(.red)
+                                .multilineTextAlignment(.center)
                         }
+
+                        Button(action: submit) {
+                            if isBusy {
+                                ProgressView()
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8)
+                            } else {
+                                Text("登录")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                            }
+                        }
+                        .background(Theme.brandGradient)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .disabled(isBusy || username.isEmpty || password.isEmpty)
+                        .opacity(isBusy || username.isEmpty || password.isEmpty ? 0.6 : 1)
+
+                        Text("账号由管理员分配，如需使用请联系管理员")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 8)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .padding(.horizontal, 24)
-                    .disabled(isBusy || username.isEmpty || password.isEmpty)
+                    .padding(24)
                 }
             }
+            .background(Color(UIColor.systemBackground))
             .navigationBarHidden(true)
         }
     }
