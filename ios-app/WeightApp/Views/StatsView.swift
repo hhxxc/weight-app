@@ -87,7 +87,7 @@ struct StatsView: View {
                 .font(.subheadline)
                 .foregroundColor(.white.opacity(0.9))
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(String(format: "%.1f", w.lost_kg))
+                Text(String(format: "%.1f", w.lost_kg ?? 0))
                     .font(.system(size: 44, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                 Text("kg")
