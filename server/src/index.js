@@ -12,6 +12,9 @@ import { computeStats } from './stats.js';
 const PORT = process.env.PORT || 3000;
 const BCRYPT_ROUNDS = 10;
 
+// 初始管理员用户名（部署时用环境变量指定；启动时自动提升为管理员）
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'hhxxc';
+
 // 图片上传目录（存食物照片）
 const UPLOAD_DIR = join(DATA_DIR, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -85,7 +88,15 @@ function toDate(s) {
 }
 
 // ---- 注册 / 登录 ----
+// 注册改造成「管理员分配账号」：只有管理员能创建账号（给家人分配）。
+// 引导逻辑：当 users 表为空时，第一个注册的账号自动成为管理员（打破鸡生蛋死循环）。
 route('POST', '/auth/register', async (req, res) => {
+  const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
+  const admin = authUser(req);
+  const canCreate = userCount === 0 || (admin && admin.is_admin);
+  if (!canCreate) {
+    return json(res, 403, { error: '仅管理员可创建账号' });
+  }
   const { username, password, nickname = '' } = await readBody(req);
   if (!username || !password) return json(res, 400, { error: '用户名和密码不能为空' });
   if (String(username).trim().length < 2) return json(res, 400, { error: '用户名至少 2 个字符' });
@@ -94,10 +105,11 @@ route('POST', '/auth/register', async (req, res) => {
   const exists = db.prepare('SELECT id FROM users WHERE username = ?').get(uname);
   if (exists) return json(res, 409, { error: '该用户名已被注册' });
   const hash = bcrypt.hashSync(String(password), BCRYPT_ROUNDS);
-  const info = db.prepare('INSERT INTO users (username, password, nickname, created_at) VALUES (?,?,?,?)')
-    .run(uname, hash, String(nickname || '').slice(0, 32), Date.now());
+  const isFirst = userCount === 0;
+  const info = db.prepare('INSERT INTO users (username, password, nickname, is_admin, created_at) VALUES (?,?,?,?,?)')
+    .run(uname, hash, String(nickname || '').slice(0, 32), isFirst ? 1 : 0, Date.now());
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
-  json(res, 201, { token: sign(u), user: publicUser(u) });
+  json(res, 201, { user: publicUser(u) });
 });
 
 route('POST', '/auth/login', async (req, res) => {
@@ -347,6 +359,16 @@ const server = http.createServer(async (req, res) => {
   }
   json(res, 404, { error: 'Not Found' });
 });
+
+// 启动时提升初始管理员（ADMIN_USERNAME 对应的账号，已存在则设为 admin）
+try {
+  const up = db.prepare('UPDATE users SET is_admin = 1 WHERE username = ?').run(ADMIN_USERNAME);
+  if (up.changes > 0) {
+    console.log(`👑 管理员账号已提升：${ADMIN_USERNAME}`);
+  }
+} catch (e) {
+  console.error('[init] 提升管理员失败:', e.message);
+}
 
 server.listen(PORT, () => {
   console.log(`✅ weight-server 已启动，监听 ${PORT}`);

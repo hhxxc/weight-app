@@ -1,13 +1,11 @@
 import SwiftUI
 
-/// 登录 / 注册视图
+/// 登录视图（注册入口已移除，账号由管理员分配）
 struct LoginView: View {
     @EnvironmentObject var state: AppState
 
     @State private var username = ""
     @State private var password = ""
-    @State private var nickname = ""
-    @State private var isRegister = false
     @State private var server = ""
     @State private var isBusy = false
     @State private var error: String?
@@ -23,17 +21,12 @@ struct LoginView: View {
                             .foregroundColor(.accentColor)
                         Text("体重记录")
                             .font(.largeTitle.bold())
-                        Text(isRegister ? "注册新账号" : "登录你的账号")
+                        Text("登录你的账号")
                             .foregroundColor(.secondary)
                     }
                     .padding(.top, 40)
 
                     VStack(spacing: 14) {
-                        if isRegister {
-                            TextField("昵称（可选）", text: $nickname)
-                                .textFieldStyle(.roundedBorder)
-                                .autocapitalization(.none)
-                        }
                         TextField("用户名", text: $username)
                             .textFieldStyle(.roundedBorder)
                             .autocapitalization(.none)
@@ -62,7 +55,7 @@ struct LoginView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 8)
                         } else {
-                            Text(isRegister ? "注册并登录" : "登录")
+                            Text("登录")
                                 .font(.headline)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 8)
@@ -71,11 +64,6 @@ struct LoginView: View {
                     .buttonStyle(.borderedProminent)
                     .padding(.horizontal, 24)
                     .disabled(isBusy || username.isEmpty || password.isEmpty)
-
-                    Button(isRegister ? "已有账号？去登录" : "没有账号？去注册") {
-                        withAnimation { isRegister.toggle(); error = nil }
-                    }
-                    .font(.footnote)
                 }
             }
             .navigationBarHidden(true)
@@ -92,15 +80,8 @@ struct LoginView: View {
         Task {
             defer { isBusy = false }
             do {
-                let resp: AuthResponse
-                if isRegister {
-                    resp = try await APIClient.shared.register(username: username.trimmingCharacters(in: .whitespaces),
-                                                               password: password,
-                                                               nickname: nickname.trimmingCharacters(in: .whitespaces))
-                } else {
-                    resp = try await APIClient.shared.login(username: username.trimmingCharacters(in: .whitespaces),
+                let resp = try await APIClient.shared.login(username: username.trimmingCharacters(in: .whitespaces),
                                                             password: password)
-                }
                 await MainActor.run { state.handleAuth(resp) }
             } catch let err {
                 await MainActor.run { error = err.localizedDescription }

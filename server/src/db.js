@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
   nickname    TEXT    NOT NULL DEFAULT '',
   height_cm   REAL,                      -- 身高，用于 BMI
   target_kg   REAL,                      -- 目标体重
+  is_admin    INTEGER NOT NULL DEFAULT 0, -- 1=管理员（可分配账号）
   created_at  INTEGER NOT NULL
 );
 
@@ -67,6 +68,8 @@ for (const [col, ddl] of [
 ]) {
   ensureColumn('meals', col, ddl);
 }
+// 迁移：users 表补 is_admin 列（管理员分配账号机制）
+ensureColumn('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');
 
 export default db;
 export { DATA_DIR };
