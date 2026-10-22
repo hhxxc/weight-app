@@ -10,13 +10,30 @@ struct StatsView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: 18) {
                     if let s = stats {
+                        // 总览（渐变卡）
+                        overviewCard(s)
+
+                        // 体重模块
+                        sectionHeader("体重", icon: "scalemass.fill")
                         weightCard(s)
+
+                        // 卡路里模块
+                        sectionHeader("卡路里", icon: "flame.fill")
                         calorieCard(s)
+
+                        // 营养模块
+                        sectionHeader("营养 · 近7天日均", icon: "leaf.fill")
                         nutritionCard(s)
+
+                        // 趋势模块
+                        sectionHeader("趋势", icon: "chart.line.uptrend.xyaxis")
                         weightTrendCard(s)
                         calorieTrendCard(s)
+
+                        // AI 建议模块
+                        sectionHeader("AI 建议", icon: "sparkles")
                         adviceCard
                     } else if let error {
                         VStack(spacing: 10) {
@@ -32,6 +49,7 @@ struct StatsView: View {
                 }
                 .padding(16)
             }
+            .background(Color(UIColor.systemGroupedBackground))
             .navigationTitle("分析")
             .task { await load() }
             .refreshable { await load() }
@@ -48,61 +66,95 @@ struct StatsView: View {
         }
     }
 
+    // MARK: - 模块标题 + 总览
+
+    private func sectionHeader(_ title: String, icon: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.subheadline)
+                .foregroundColor(Theme.brandBlue)
+            Text(title)
+                .font(.headline)
+            Spacer()
+        }
+        .padding(.top, 4)
+    }
+
+    private func overviewCard(_ s: APIClient.StatsResponse) -> some View {
+        let w = s.weight
+        return VStack(alignment: .leading, spacing: 0) {
+            Text("累计已减")
+                .font(.subheadline)
+                .foregroundColor(.white.opacity(0.9))
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(String(format: "%.1f", w.lost_kg))
+                    .font(.system(size: 44, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                Text("kg")
+                    .font(.headline)
+                    .foregroundColor(.white.opacity(0.85))
+                Spacer()
+                if let bmi = w.bmi, !(w.bmi_category ?? "").isEmpty {
+                    Theme.pill("BMI \(String(format: "%.1f", bmi)) · \(w.bmi_category ?? "")")
+                }
+            }
+            .padding(.top, 4)
+
+            HStack(spacing: 0) {
+                miniStat("起始", w.start_kg)
+                miniStat("当前", w.current_kg)
+                miniStat("目标", w.target_kg)
+            }
+            .padding(.top, 16)
+        }
+        .padding(22)
+        .background(Theme.brandGradient)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func miniStat(_ title: String, _ v: Double?) -> some View {
+        VStack(spacing: 3) {
+            Text(v == nil ? "—" : String(format: "%.1f", v!))
+                .font(.title3.bold())
+                .foregroundColor(.white)
+                .monospacedDigit()
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.8))
+        }
+        .frame(maxWidth: .infinity)
+    }
+
     // MARK: - 体重汇总卡片
 
     private func weightCard(_ s: APIClient.StatsResponse) -> some View {
         let w = s.weight
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("体重").font(.headline)
-                Spacer()
-                if let bmi = w.bmi, !(w.bmi_category ?? "").isEmpty {
-                    Text("BMI \(String(format: "%.1f", bmi)) · \(w.bmi_category ?? "")")
-                        .font(.caption)
-                        .padding(.horizontal, 8).padding(.vertical, 3)
-                        .background(bmiColor(w.bmi_category ?? "").opacity(0.15))
-                        .foregroundColor(bmiColor(w.bmi_category ?? ""))
-                        .cornerRadius(6)
-                }
-            }
-            HStack(spacing: 0) {
-                weightStat("起始", w.start_kg)
-                weightStat("当前", w.current_kg)
-                weightStat("目标", w.target_kg)
-                weightStat("已减", w.lost_kg, signed: true)
-            }
+        return VStack(alignment: .leading, spacing: 10) {
             if w.record_count < 3 {
                 Text("记录还很少（\(w.record_count) 条），坚持每天称重才能看到趋势")
+                    .font(.caption).foregroundColor(.secondary)
+            } else {
+                Text("已记录 \(w.record_count) 条体重")
                     .font(.caption).foregroundColor(.secondary)
             }
         }
         .padding(16)
         .background(cardBg)
-    }
-
-    private func weightStat(_ title: String, _ v: Double?, signed: Bool = false) -> some View {
-        VStack(spacing: 4) {
-            Text(v == nil ? "—" : String(format: signed ? "%+.1f" : "%.1f", v!))
-                .font(.title3.bold()).monospacedDigit()
-            Text(title).font(.caption).foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
+        .cardShadow()
     }
 
     // MARK: - 卡路里卡片
 
     private func calorieCard(_ s: APIClient.StatsResponse) -> some View {
         let c = s.calories
-        return VStack(alignment: .leading, spacing: 12) {
-            Text("卡路里摄入").font(.headline)
-            HStack(spacing: 0) {
-                calorieStat("今日", c.today_kcal)
-                calorieStat("近7天日均", c.avg7_kcal)
-                calorieStat("近30天日均", c.avg30_kcal)
-            }
+        return HStack(spacing: 0) {
+            calorieStat("今日", c.today_kcal)
+            calorieStat("近7天日均", c.avg7_kcal)
+            calorieStat("近30天日均", c.avg30_kcal)
         }
         .padding(16)
         .background(cardBg)
+        .cardShadow()
     }
 
     private func calorieStat(_ title: String, _ v: Double) -> some View {
@@ -117,21 +169,22 @@ struct StatsView: View {
 
     private func nutritionCard(_ s: APIClient.StatsResponse) -> some View {
         let n = s.nutrition
-        return VStack(alignment: .leading, spacing: 12) {
-            Text("营养（近7天日均）").font(.headline)
-            HStack(spacing: 12) {
-                macroBar("蛋白质", n.avg7_protein_g, .blue)
-                macroBar("脂肪", n.avg7_fat_g, .yellow)
-                macroBar("碳水", n.avg7_carbs_g, .orange)
-            }
+        return HStack(spacing: 12) {
+            macroBar("蛋白质", n.avg7_protein_g, Theme.brandBlue)
+            macroBar("脂肪", n.avg7_fat_g, Theme.warning)
+            macroBar("碳水", n.avg7_carbs_g, Theme.brandCyan)
         }
         .padding(16)
         .background(cardBg)
+        .cardShadow()
     }
 
     private func macroBar(_ name: String, _ v: Double, _ color: Color) -> some View {
-        VStack(spacing: 4) {
-            Text("\(Int(v.rounded()))g").font(.headline).monospacedDigit()
+        VStack(spacing: 5) {
+            HStack(spacing: 5) {
+                Circle().fill(color).frame(width: 7, height: 7)
+                Text("\(Int(v.rounded()))g").font(.headline).monospacedDigit()
+            }
             Text(name).font(.caption).foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
@@ -141,7 +194,7 @@ struct StatsView: View {
 
     private func weightTrendCard(_ s: APIClient.StatsResponse) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("体重趋势").font(.headline)
+            Text("体重变化").font(.subheadline.bold()).foregroundColor(.secondary)
             if weightTrend(s).count > 1 {
                 TrendChartView(weights: weightTrend(s), height: 180, showDetail: false)
             } else {
@@ -151,6 +204,7 @@ struct StatsView: View {
         }
         .padding(16)
         .background(cardBg)
+        .cardShadow()
     }
 
     private func weightTrend(_ s: APIClient.StatsResponse) -> [WeightRecord] {
@@ -163,7 +217,7 @@ struct StatsView: View {
 
     private func calorieTrendCard(_ s: APIClient.StatsResponse) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("每日卡路里（近30天）").font(.headline)
+            Text("每日卡路里").font(.subheadline.bold()).foregroundColor(.secondary)
             let pts = Array(s.daily.suffix(30))
             if pts.contains(where: { $0.kcal > 0 }) {
                 KcalBarChart(points: pts, height: 140)
@@ -174,6 +228,7 @@ struct StatsView: View {
         }
         .padding(16)
         .background(cardBg)
+        .cardShadow()
     }
 
     // MARK: - AI 建议
@@ -235,17 +290,8 @@ struct StatsView: View {
         }
     }
 
-    private func bmiColor(_ cat: String) -> Color {
-        switch cat {
-        case "偏瘦": return Theme.brandBlue
-        case "正常": return Theme.success
-        case "超重": return Theme.warning
-        default: return Theme.danger
-        }
-    }
-
     private var cardBg: some View {
-        RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(UIColor.secondarySystemGroupedBackground))
+        RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(UIColor.systemBackground))
     }
 }
 
