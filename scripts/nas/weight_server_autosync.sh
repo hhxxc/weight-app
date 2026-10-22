@@ -68,7 +68,7 @@ fi
 
 # 2. 下载 tar.gz
 TMP_TAR="/tmp/weight-server.tar.gz"
-if ! curl -sL -m 600 -o "$TMP_TAR" "$ASSET_URL" >> "$LOG" 2>&1; then
+if ! curl -sL -m 1800 -o "$TMP_TAR" "$ASSET_URL" >> "$LOG" 2>&1; then
     log "FAIL: 下载镜像 tar.gz 失败"
     exit 0
 fi

@@ -140,28 +140,27 @@ def main():
 
     client, _ = connect(user, PASSWORD, port, hosts)
     try:
-        print("拉取 ghcr.io 镜像…")
-        image = "ghcr.io/hhxxc/weight-server:latest"
-        out, err = run(client, "docker pull %s" % image, timeout=900)
-        print(out.strip())
-        if err.strip():
-            print("[stderr] %s" % err.strip()[:300])
-
-        print("启动容器…")
+        # 下载镜像 tar.gz（仓库 public，Release 资产匿名可下载）→ docker load → run
+        asset_url = "https://github.com/hhxxc/weight-app/releases/latest/download/weight-server.tar.gz"
+        print("下载镜像 tar.gz 并 docker load …")
         run_cmd = (
+            "curl -sL -m 1800 -o /tmp/weight-server.tar.gz '%s' && "
+            "gzip -t /tmp/weight-server.tar.gz && "
+            "docker load -i /tmp/weight-server.tar.gz && "
+            "rm -f /tmp/weight-server.tar.gz && "
             "docker rm -f %s 2>/dev/null; "
             "docker run -d --name %s --restart unless-stopped "
             "-p %s:3000 "
             "-e JWT_SECRET=%s "
             "-v %s/data:/data "
             "-v /volume2/docker/giliconcloude_key.txt:/data/giliconcloude_key.txt:ro "
-            "%s"
-            % (CONTAINER_NAME, CONTAINER_NAME, HOST_PORT, shq(jwt_secret), shq(NAS_APP_DIR), image)
+            "weight-server:latest"
+            % (asset_url, CONTAINER_NAME, CONTAINER_NAME, HOST_PORT, shq(jwt_secret), shq(NAS_APP_DIR))
         )
-        out, err = run(client, run_cmd, timeout=120)
+        out, err = run(client, run_cmd, timeout=900)
         print(out.strip())
         if err.strip():
-            print("[stderr] %s" % err.strip()[:300])
+            print("[stderr] %s" % err.strip()[:500])
 
         print("容器状态：")
         out, _ = run(client, "docker ps --filter name=%s --format '{{.Names}} {{.Status}} {{.Ports}}'" % CONTAINER_NAME)
