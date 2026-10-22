@@ -293,6 +293,21 @@ route('POST', '/meals', async (req, res) => {
   json(res, 201, { item: row });
 }, true);
 
+// 一段时间的每日饮食汇总（周视图的小圆点用）
+route('GET', '/meals/summary', (req, res) => {
+  const from = toDate(req.query.get('from'));
+  const to = toDate(req.query.get('to'));
+  if (!from || !to) return json(res, 400, { error: 'from/to 需为 YYYY-MM-DD' });
+  const rows = db.prepare(`
+    SELECT date, COUNT(*) AS count, ROUND(SUM(kcal)) AS kcal
+    FROM meals
+    WHERE user_id=? AND date>=? AND date<=?
+    GROUP BY date
+    ORDER BY date
+  `).all(req.user.id, from, to);
+  json(res, 200, { items: rows });
+}, true);
+
 // 常吃食物：最近 N 天按内容聚合（一键再记用），次数多的排前面
 route('GET', '/meals/frequent', (req, res) => {
   const days = Math.min(Math.max(parseInt(req.query.get('days') || '90', 10) || 90, 7), 365);

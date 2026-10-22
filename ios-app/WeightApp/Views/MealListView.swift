@@ -10,6 +10,7 @@ struct MealListView: View {
     @State private var showNutritionOCR = false
     @State private var showVoice = false
     @State private var showFrequent = false
+    @State private var weekSummary: [String: APIClient.MealDaySummary] = [:]
     @State private var editingMeal: MealRecord?
     @State private var viewingImage: URL?
     @State private var showViewer = false
@@ -87,22 +88,158 @@ struct MealListView: View {
         .padding(.bottom, 10)
     }
 
+    // MARK: - 一周七天
+
+    private static let monthDayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "zh_CN")
+        f.dateFormat = "M月d日"
+        return f
+    }()
+
+    private var mondayFirstCalendar: Calendar {
+        var c = Calendar.current
+        c.firstWeekday = 2   // 周一开头
+        return c
+    }
+
+    private var weekDates: [Date] {
+        let cal = mondayFirstCalendar
+        guard let start = cal.date(from: cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: selectedDate)) else {
+            return [selectedDate]
+        }
+        return (0..<7).compactMap { cal.date(byAdding: .day, value: $0, to: start) }
+    }
+
+    private var weekKey: String {
+        WeightRecord.dateFormatter.string(from: weekDates.first ?? selectedDate)
+    }
+
+    private var isCurrentWeek: Bool {
+        weekDates.contains { Calendar.current.isDateInToday($0) }
+    }
+
+    private var weekRangeText: String {
+        guard let a = weekDates.first, let b = weekDates.last else { return "" }
+        return "\(Self.monthDayFormatter.string(from: a)) – \(Self.monthDayFormatter.string(from: b))"
+    }
+
+    private var weekBar: some View {
+        VStack(spacing: 6) {
+            HStack {
+                Text(weekRangeText)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+                if !isCurrentWeek {
+                    Button("回到今天") {
+                        selectedDate = Date()
+                        Haptics.tap()
+                    }
+                    .font(.caption)
+                    .foregroundColor(Theme.brandDeep)
+                }
+            }
+
+            HStack(spacing: 4) {
+                Button { shiftWeek(-1) } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(width: 26, height: 44)
+                        .contentShape(Rectangle())
+                }
+                ForEach(weekDates, id: \.self) { d in
+                    dayChip(d)
+                }
+                Button { shiftWeek(1) } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(width: 26, height: 44)
+                        .contentShape(Rectangle())
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 6)
+        .padding(.bottom, 8)
+    }
+
+    private func dayChip(_ d: Date) -> some View {
+        let key = WeightRecord.dateFormatter.string(from: d)
+        let selected = key == dateStr
+        let today = Calendar.current.isDateInToday(d)
+        let kcal = kcalForChip(key)
+
+        return Button {
+            selectedDate = d
+            Haptics.tap()
+        } label: {
+            VStack(spacing: 5) {
+                Text(weekdayLabel(d))
+                    .font(.system(size: 10))
+                    .foregroundColor(selected ? Color.white.opacity(0.85) : .secondary)
+                Text("\(Calendar.current.component(.day, from: d))")
+                    .font(.subheadline.bold())
+                    .monospacedDigit()
+                    .foregroundColor(selected ? .white : (today ? Theme.brandDeep : .primary))
+                Circle()
+                    .fill(dotColor(kcal: kcal, selected: selected))
+                    .frame(width: 4, height: 4)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(selected ? Theme.brandDeep : (today ? Theme.brandBlue.opacity(0.10) : Color.clear))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func weekdayLabel(_ d: Date) -> String {
+        let idx = Calendar.current.component(.weekday, from: d) - 1
+        let names = ["日", "一", "二", "三", "四", "五", "六"]
+        return names[max(0, min(6, idx))]
+    }
+
+    /// 当前正在看的这天用实时合计（刚记完立刻更新），其余天用周汇总
+    private func kcalForChip(_ key: String) -> Double? {
+        if key == dateStr, state.mealsDate == dateStr {
+            return dayTotal.kcal
+        }
+        return weekSummary[key]?.kcal
+    }
+
+    private func dotColor(kcal: Double?, selected: Bool) -> Color {
+        if selected { return Color.white.opacity(0.9) }
+        guard let k = kcal, k > 0 else { return Color.clear }
+        if let target = kcalTarget, target > 0, k > target { return Theme.warning }
+        return Theme.brandBlue
+    }
+
+    private func loadWeekSummary() async {
+        guard let first = weekDates.first, let last = weekDates.last else { return }
+        do {
+            let items = try await APIClient.shared.fetchMealSummary(
+                from: WeightRecord.dateFormatter.string(from: first),
+                to: WeightRecord.dateFormatter.string(from: last))
+            await MainActor.run {
+                var map: [String: APIClient.MealDaySummary] = [:]
+                for i in items { map[i.date] = i }
+                weekSummary = map
+            }
+        } catch {
+            // 小圆点缺失不影响主流程，静默
+        }
+    }
+
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // 日期切换器
-                HStack {
-                    Button { shiftDay(-1) } label: { Image(systemName: "chevron.left") }
-                        .frame(width: 44, height: 44)
-                    Spacer()
-                    DatePicker("", selection: $selectedDate, displayedComponents: .date)
-                        .labelsHidden()
-                    Spacer()
-                    Button { shiftDay(1) } label: { Image(systemName: "chevron.right") }
-                        .frame(width: 44, height: 44)
-                }
-                .padding(.horizontal)
-                .padding(.vertical, 8)
+                // 一周七天一览：点哪天看哪天，箭头按周翻
+                weekBar
 
                 // 今日热量预算（没设目标时退回简单合计）
                 summaryBar
@@ -221,6 +358,9 @@ struct MealListView: View {
                     await state.prefetchMeals(date: WeightRecord.dateFormatter.string(from: prev))
                 }
             }
+            .task(id: weekKey) {
+                await loadWeekSummary()
+            }
         }
         .navigationViewStyle(.stack)
     }
@@ -277,8 +417,8 @@ struct MealListView: View {
         }
     }
 
-    private func shiftDay(_ d: Int) {
-        if let nd = Calendar.current.date(byAdding: .day, value: d, to: selectedDate) {
+    private func shiftWeek(_ weeks: Int) {
+        if let nd = Calendar.current.date(byAdding: .day, value: weeks * 7, to: selectedDate) {
             selectedDate = nd
             Haptics.tap()
         }

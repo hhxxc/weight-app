@@ -306,6 +306,19 @@ final class APIClient {
 
     // MARK: - 常吃食物
 
+    struct MealDaySummary: Decodable, Identifiable {
+        var id: String { date }
+        let date: String
+        let count: Int
+        let kcal: Double?
+    }
+
+    /// 一段时间内每天的饮食条数与卡路里合计（周视图用）
+    func fetchMealSummary(from: String, to: String) async throws -> [MealDaySummary] {
+        let r: [String: [MealDaySummary]] = try await request("GET", "/meals/summary?from=\(from)&to=\(to)")
+        return r["items"] ?? []
+    }
+
     struct FrequentMeal: Decodable, Identifiable {
         var id: String { content }
         let content: String
