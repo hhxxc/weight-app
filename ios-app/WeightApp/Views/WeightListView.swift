@@ -29,9 +29,19 @@ struct WeightListView: View {
                     Button { showTrend = true } label: { Image(systemName: "chart.line.uptrend.xyaxis") }
                         .disabled(state.weights.count < 2)
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { showAdd = true } label: { Image(systemName: "plus") }
+            }
+            .safeAreaInset(edge: .bottom) {
+                Button { showAdd = true } label: {
+                    Label("记录体重", systemImage: "plus.circle.fill")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
                 }
+                .background(Theme.brandGradient)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
             }
             .sheet(isPresented: $showAdd) {
                 WeightEditView()
@@ -50,12 +60,10 @@ struct WeightListView: View {
                 .foregroundColor(.secondary)
             Text("还没有体重记录")
                 .font(.headline)
-            Text("点击右上角 + 记录第一条，或从 Excel 导入历史数据")
+            Text("点下方「记录体重」记第一条，或从 Excel 导入历史数据")
                 .font(.footnote)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-            Button("记录体重") { showAdd = true }
-                .buttonStyle(.borderedProminent)
         }
         .padding()
     }
