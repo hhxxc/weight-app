@@ -43,9 +43,10 @@ struct MealListView: View {
                             .foregroundColor(.secondary)
                         Text("今天还没记录饮食")
                             .font(.headline)
-                        Text("点击右下角 + 记一餐")
+                        Text("点下方「拍照记饮食」，拍一张自动识别卡路里")
                             .font(.footnote)
                             .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -102,19 +103,11 @@ struct MealListView: View {
                     }
                     .listStyle(.plain)
                 }
+
+                // 底部操作栏：拍照识图为主操作
+                bottomBar
             }
             .navigationTitle("饮食")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button { showAdd = true } label: { Label("手动记录", systemImage: "square.and.pencil") }
-                        Button { showFoodRecognize = true } label: { Label("拍照识图", systemImage: "camera") }
-                        Button { showNutritionOCR = true } label: { Label("拍配料表", systemImage: "text.viewfinder") }
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                }
-            }
             .sheet(isPresented: $showAdd) {
                 MealEditView(dateStr: dateStr)
             }
@@ -146,6 +139,48 @@ struct MealListView: View {
         case "lunch": return .green
         case "dinner": return .purple
         default: return .gray
+        }
+    }
+
+    /// 底部操作栏：拍照识图主按钮 + 两个次要入口
+    private var bottomBar: some View {
+        VStack(spacing: 10) {
+            Button { showFoodRecognize = true } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "camera.fill")
+                    Text("拍照记饮食")
+                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+            }
+            .background(Theme.brandGradient)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            HStack(spacing: 12) {
+                secondaryButton("手动记录", icon: "square.and.pencil") { showAdd = true }
+                secondaryButton("拍配料表", icon: "text.viewfinder") { showNutritionOCR = true }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+        .background(Color(UIColor.systemBackground))
+    }
+
+    private func secondaryButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                Text(title)
+            }
+            .font(.subheadline)
+            .foregroundColor(Theme.brandDeep)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(Theme.brandBlue.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
     }
 
