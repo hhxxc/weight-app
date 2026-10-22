@@ -55,6 +55,13 @@ final class APIClient {
         UserDefaults.standard.set(s, forKey: serverKey)
     }
 
+    /// 把后端返回的相对图片路径（如 /uploads/xxx.jpg）拼成完整 URL
+    func imageURL(for path: String?) -> URL? {
+        guard let p = path, !p.isEmpty else { return nil }
+        if p.hasPrefix("http://") || p.hasPrefix("https://") { return URL(string: p) }
+        return URL(string: activeServer + p)
+    }
+
     /// 主备地址列表：当前生效地址优先，另一个兜底
     private var candidateServers: [String] {
         var list = [activeServer]

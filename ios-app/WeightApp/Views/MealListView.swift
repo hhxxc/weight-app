@@ -9,6 +9,8 @@ struct MealListView: View {
     @State private var showFoodRecognize = false
     @State private var showNutritionOCR = false
     @State private var editingMeal: MealRecord?
+    @State private var viewingImage: URL?
+    @State private var showViewer = false
 
     private var dateStr: String { WeightRecord.dateFormatter.string(from: selectedDate) }
     private var dayMeals: [MealRecord] {
@@ -67,6 +69,27 @@ struct MealListView: View {
                                     }
                                 }
                                 Spacer()
+                                // 食物缩略图
+                                if let url = APIClient.shared.imageURL(for: m.image_url) {
+                                    AsyncImage(url: url) { phase in
+                                        switch phase {
+                                        case .success(let image):
+                                            image.resizable().scaledToFill()
+                                        case .failure:
+                                            Image(systemName: "photo")
+                                                .foregroundColor(.secondary)
+                                        default:
+                                            ProgressView().scaleEffect(0.7)
+                                        }
+                                    }
+                                    .frame(width: 52, height: 52)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        viewingImage = url
+                                        showViewer = true
+                                    }
+                                }
                                 Image(systemName: "chevron.right")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -97,6 +120,11 @@ struct MealListView: View {
             }
             .sheet(item: $editingMeal) { m in
                 MealEditView(dateStr: m.date, meal: m)
+            }
+            .sheet(isPresented: $showViewer) {
+                if let url = viewingImage {
+                    ImageViewer(url: url)
+                }
             }
             .sheet(isPresented: $showFoodRecognize) {
                 FoodRecognizeView(dateStr: dateStr)
@@ -134,6 +162,39 @@ struct MealListView: View {
                 try? await APIClient.shared.deleteMeal(id: m.id)
             }
             await state.refreshMeals(date: dateStr)
+        }
+    }
+}
+
+/// 食物图片大图查看
+struct ImageViewer: View {
+    @Environment(\.dismiss) private var dismiss
+    let url: URL
+
+    var body: some View {
+        NavigationView {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image.resizable().scaledToFit()
+                case .failure:
+                    VStack(spacing: 8) {
+                        Image(systemName: "photo").font(.system(size: 40)).foregroundColor(.secondary)
+                        Text("图片加载失败").font(.footnote).foregroundColor(.secondary)
+                    }
+                default:
+                    ProgressView()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.black.opacity(0.05))
+            .navigationTitle("食物照片")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("关闭") { dismiss() }
+                }
+            }
         }
     }
 }
