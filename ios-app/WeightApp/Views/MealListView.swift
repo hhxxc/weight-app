@@ -146,7 +146,7 @@ struct MealEditView: View {
     let dateStr: String
     var meal: MealRecord? = nil   // 编辑模式：传入要编辑的记录
 
-    @State private var type = "breakfast"
+    @State private var type = MealRecord.autoType()
     @State private var content = ""
     @State private var isBusy = false
     @State private var error: String?

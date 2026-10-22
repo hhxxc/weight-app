@@ -52,6 +52,17 @@ struct MealRecord: Identifiable, Codable, Equatable {
         guard let k = kcal, k > 0 else { return "" }
         return "\(Int(k.rounded())) 千卡"
     }
+
+    /// 根据当前时间自动判断餐次：5-9 早餐 / 10-13 午餐 / 14-20 晚餐 / 其余加餐
+    static func autoType(for date: Date = Date()) -> String {
+        let hour = Calendar.current.component(.hour, from: date)
+        switch hour {
+        case 5..<10: return "breakfast"
+        case 10..<14: return "lunch"
+        case 14..<21: return "dinner"
+        default: return "snack"
+        }
+    }
 }
 
 /// 用户资料

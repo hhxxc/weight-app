@@ -14,7 +14,7 @@ struct NutritionOCRView: View {
     @State private var saving = false
     @State private var result: APIClient.NutritionInfo?
     @State private var weightText = ""
-    @State private var type = "snack"
+    @State private var type = MealRecord.autoType()
     @State private var error: String?
 
     private let types = [("breakfast", "早餐"), ("lunch", "午餐"), ("dinner", "晚餐"), ("snack", "加餐")]
