@@ -7,6 +7,7 @@ final class AppLogger {
 
     private let maxEntries = 200
     private let key = "weight.applog"
+    private let lock = NSLock()   // 启动时资料/体重并行请求，日志需串行写入
 
     private(set) var entries: [String] = []
 
@@ -16,17 +17,21 @@ final class AppLogger {
 
     func log(_ message: String) {
         let line = "[\(Self.timestamp())] \(message)"
+        lock.lock()
         entries.append(line)
         if entries.count > maxEntries {
             entries.removeFirst(entries.count - maxEntries)
         }
         UserDefaults.standard.set(entries, forKey: key)
+        lock.unlock()
         print("[WeightLog] \(line)")
     }
 
     func clear() {
+        lock.lock()
         entries.removeAll()
         UserDefaults.standard.removeObject(forKey: key)
+        lock.unlock()
     }
 
     private static let formatter: DateFormatter = {

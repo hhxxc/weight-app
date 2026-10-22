@@ -1,22 +1,32 @@
 import SwiftUI
 
-/// 体重列表 + 概览 + 趋势（核心页面）
+/// 体重列表 + 概览 + 预测 + 趋势（核心页面）
 struct WeightListView: View {
     @EnvironmentObject var state: AppState
     @State private var showAdd = false
     @State private var showTrend = false
+    @State private var showAllHistory = false
+    @State private var pendingDelete: [WeightRecord] = []
+    @State private var showDeleteConfirm = false
 
-    private var sortedWeights: [WeightRecord] {
-        state.weights.sorted { $0.date > $1.date }
+    /// 首屏只渲染最近 30 条，其余按需展开（历史很长时列表更轻）
+    private static let pageSize = 30
+
+    private var latest: WeightRecord? { state.sortedDesc.first }
+
+    private var visibleHistory: [WeightRecord] {
+        showAllHistory ? state.sortedDesc : Array(state.sortedDesc.prefix(Self.pageSize))
     }
 
-    private var latest: WeightRecord? { sortedWeights.first }
+    private var forecast: TrendAnalysis.Forecast? {
+        TrendAnalysis.forecast(state.weights, targetKg: state.user?.target_kg)
+    }
 
     var body: some View {
         NavigationView {
             Group {
                 if state.isLoading && state.weights.isEmpty {
-                    ProgressView("加载中…")
+                    skeleton
                 } else if state.weights.isEmpty {
                     emptyView
                 } else {
@@ -31,7 +41,10 @@ struct WeightListView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                Button { showAdd = true } label: {
+                Button {
+                    Haptics.tap()
+                    showAdd = true
+                } label: {
                     Label("记录体重", systemImage: "plus.circle.fill")
                         .font(.headline)
                         .foregroundColor(.white)
@@ -49,24 +62,68 @@ struct WeightListView: View {
             .sheet(isPresented: $showTrend) {
                 TrendView()
             }
+            .confirmationDialog(deleteTitle, isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+                Button("删除", role: .destructive) { performDelete() }
+                Button("取消", role: .cancel) { pendingDelete = [] }
+            } message: {
+                Text("删除后不可恢复，需要时可重新记录。")
+            }
         }
         .navigationViewStyle(.stack)
     }
 
+    // MARK: - 加载骨架
+
+    private var skeleton: some View {
+        VStack(spacing: 14) {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Theme.brandGradient)
+                .frame(height: 190)
+                .overlay(
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("正在同步最新记录…")
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.9))
+                        Text("--")
+                            .font(.system(size: 46, weight: .bold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.65))
+                    }
+                    .padding(22),
+                    alignment: .leading
+                )
+            ForEach(0..<3) { _ in
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color(UIColor.secondarySystemGroupedBackground))
+                    .frame(height: 54)
+            }
+            Spacer()
+        }
+        .padding(16)
+    }
+
     private var emptyView: some View {
         VStack(spacing: 16) {
-            Image(systemName: "scalemass")
-                .font(.system(size: 60))
-                .foregroundColor(.secondary)
+            ZStack {
+                Circle()
+                    .fill(Theme.brandGradient)
+                    .frame(width: 96, height: 96)
+                    .opacity(0.15)
+                Image(systemName: "scalemass")
+                    .font(.system(size: 42))
+                    .foregroundColor(Theme.brandDeep)
+            }
             Text("还没有体重记录")
                 .font(.headline)
-            Text("点下方「记录体重」记第一条，或从 Excel 导入历史数据")
+            Text("点下方「记录体重」记第一条，或到「我的」从 Excel 导入历史数据")
                 .font(.footnote)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
         }
         .padding()
     }
+
+    // MARK: - 主列表
 
     private var list: some View {
         List {
@@ -77,6 +134,13 @@ struct WeightListView: View {
                     .listRowBackground(Color.clear)
             }
 
+            // 进度预测（有目标体重且记录足够时才出现）
+            if let f = forecast {
+                Section {
+                    forecastCard(f)
+                }
+            }
+
             // 趋势图（内嵌小图）
             if state.weights.count >= 2 {
                 Section {
@@ -84,11 +148,15 @@ struct WeightListView: View {
                         HStack {
                             Text("体重趋势").font(.headline)
                             Spacer()
-                            Text("\(String(format: "%.1f", sortedWeights.last!.kg)) → \(String(format: "%.1f", sortedWeights.first!.kg))")
+                            Text("\(String(format: "%.1f", state.sortedAsc.first?.kg ?? 0)) → \(String(format: "%.1f", state.sortedAsc.last?.kg ?? 0))")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
-                        TrendChartView(weights: sortedWeights.reversed(), height: 150, showDetail: false)
+                        TrendChartView(weights: state.sortedAsc,
+                                       height: 150,
+                                       showDetail: false,
+                                       targetKg: state.user?.target_kg,
+                                       showAverage: true)
                     }
                     .padding(.vertical, 4)
                 }
@@ -96,45 +164,136 @@ struct WeightListView: View {
 
             // 历史记录
             Section("历史记录（\(state.weights.count) 条）") {
-                ForEach(sortedWeights) { w in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(w.chineseDate).font(.subheadline)
-                            if !w.note.isEmpty {
-                                Text(w.note).font(.caption).foregroundColor(.secondary)
-                            }
-                        }
-                        Spacer()
-                        Text(String(format: "%.1f kg", w.kg)).font(.headline)
-                        if let bmi = w.bmi(heightCm: state.user?.height_cm) {
-                            Text(String(format: "BMI %.1f", bmi))
-                                .font(.caption).foregroundColor(.secondary)
-                                .frame(width: 70, alignment: .trailing)
-                        }
-                    }
-                    .padding(.vertical, 2)
+                ForEach(visibleHistory) { w in
+                    historyRow(w)
                 }
-                .onDelete(perform: deleteItems)
+                .onDelete(perform: requestDelete)
+
+                if !showAllHistory && state.weights.count > Self.pageSize {
+                    Button {
+                        withAnimation { showAllHistory = true }
+                        Haptics.tap()
+                    } label: {
+                        HStack {
+                            Text("显示全部 \(state.weights.count) 条")
+                            Spacer()
+                            Image(systemName: "chevron.down").font(.caption)
+                        }
+                        .foregroundColor(Theme.brandDeep)
+                    }
+                }
             }
         }
         .listStyle(.insetGrouped)
         .refreshable { await state.refreshWeights() }
     }
 
-    private func deleteWeight(_ w: WeightRecord) {
-        Task {
-            try? await APIClient.shared.deleteWeight(date: w.date)
-            await state.refreshWeights()
+    private func historyRow(_ w: WeightRecord) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(w.chineseDate).font(.subheadline)
+                if !w.note.isEmpty {
+                    Text(w.note).font(.caption).foregroundColor(.secondary)
+                }
+            }
+            Spacer()
+            Text(String(format: "%.1f kg", w.kg)).font(.headline).monospacedDigit()
+            if let bmi = w.bmi(heightCm: state.user?.height_cm) {
+                Text(String(format: "BMI %.1f", bmi))
+                    .font(.caption).foregroundColor(.secondary)
+                    .frame(width: 70, alignment: .trailing)
+                    .monospacedDigit()
+            }
         }
+        .padding(.vertical, 2)
     }
 
-    private func deleteItems(at offsets: IndexSet) {
-        let items = offsets.map { sortedWeights[$0] }
-        Task {
-            for w in items {
-                try? await APIClient.shared.deleteWeight(date: w.date)
+    // MARK: - 预测卡片
+
+    private func forecastCard(_ f: TrendAnalysis.Forecast) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("进度预测", systemImage: "chart.line.flatten")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(Theme.brandDeep)
+                Spacer()
+                Text(TrendAnalysis.confidenceText(f.confidence))
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
             }
-            await state.refreshWeights()
+
+            HStack(spacing: 0) {
+                metric("周均变化", String(format: "%+.1f kg", f.weeklyChangeKg),
+                       color: f.weeklyChangeKg < 0 ? Theme.success : (f.weeklyChangeKg > 0 ? Theme.danger : .primary))
+                metric("预计达标", TrendAnalysis.targetText(f), color: .primary)
+                metric("还差", f.remainingKg.map { String(format: "%.1f kg", max(0, $0)) } ?? "—", color: .primary)
+            }
+
+            if let p = TrendAnalysis.progress(state.weights, targetKg: state.user?.target_kg) {
+                VStack(alignment: .leading, spacing: 5) {
+                    ProgressView(value: p)
+                        .tint(Theme.brandDeep)
+                    Text(p >= 1 ? "目标已达成，继续保持" : "已完成 \(Int((p * 100).rounded()))%")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func metric(_ title: String, _ value: String, color: Color) -> some View {
+        VStack(spacing: 3) {
+            Text(value)
+                .font(.subheadline.bold())
+                .foregroundColor(color)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(title)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - 删除
+
+    private var deleteTitle: String {
+        if pendingDelete.count == 1, let d = pendingDelete.first {
+            return "删除 \(d.chineseDate) 的记录？"
+        }
+        return "删除这 \(pendingDelete.count) 条记录？"
+    }
+
+    private func requestDelete(at offsets: IndexSet) {
+        pendingDelete = offsets.map { visibleHistory[$0] }
+        showDeleteConfirm = true
+    }
+
+    private func performDelete() {
+        let items = pendingDelete
+        pendingDelete = []
+        guard !items.isEmpty else { return }
+        Haptics.tap()
+        Task {
+            // 本地先移除，界面即时响应；失败再回滚
+            await state.removeLocalWeights(dates: items.map { $0.date })
+            var failed = 0
+            for w in items {
+                do {
+                    try await APIClient.shared.deleteWeight(date: w.date)
+                } catch {
+                    failed += 1
+                }
+            }
+            if failed > 0 {
+                await state.refreshWeights()
+                await state.showToast("有 \(failed) 条删除失败，已恢复")
+                await MainActor.run { Haptics.error() }
+            } else {
+                await MainActor.run { Haptics.success() }
+            }
         }
     }
 }
@@ -150,8 +309,12 @@ struct OverviewCard: View {
         return BMI.value(kg: l.kg, heightCm: h)
     }
 
+    private var startRecord: WeightRecord? {
+        weights.min(by: { $0.date < $1.date })
+    }
+
     private var lostKg: Double {
-        guard let first = weights.min(by: { $0.date < $1.date }), let l = latest else { return 0 }
+        guard let first = startRecord, let l = latest else { return 0 }
         return first.kg - l.kg
     }
 
@@ -173,6 +336,7 @@ struct OverviewCard: View {
                 Text(latest.map { String(format: "%.1f", $0.kg) } ?? "--")
                     .font(.system(size: 56, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
+                    .monospacedDigit()
                 Text("kg")
                     .font(.headline)
                     .foregroundColor(.white.opacity(0.85))
@@ -194,7 +358,7 @@ struct OverviewCard: View {
 
             // 底部三格：起始 / 目标 / 已减
             HStack(spacing: 0) {
-                miniStat("起始", weights.min(by: { $0.date < $1.date })?.kg)
+                miniStat("起始", startRecord?.kg)
                 miniStat("目标", user?.target_kg)
                 miniStat("已减", lostKg, signed: true)
             }

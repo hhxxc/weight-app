@@ -8,11 +8,15 @@ struct WeightEditView: View {
     @State private var date = Date()
     @State private var kgText = ""
     @State private var note = ""
-    @State private var isBusy = false
     @State private var error: String?
 
     /// 编辑已有记录时传入
     var editing: WeightRecord?
+
+    private var validKg: Double? {
+        guard let kg = Double(kgText), kg > 10, kg < 500 else { return nil }
+        return kg
+    }
 
     var body: some View {
         NavigationView {
@@ -29,7 +33,7 @@ struct WeightEditView: View {
                     TextField("备注（可选）", text: $note)
                 }
 
-                if let h = state.user?.height_cm, let kg = Double(kgText), kg > 0 {
+                if let h = state.user?.height_cm, let kg = validKg {
                     let bmi = BMI.value(kg: kg, heightCm: h)
                     Section("BMI 预览") {
                         HStack {
@@ -53,7 +57,7 @@ struct WeightEditView: View {
                     Button("取消") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存", action: save).disabled(isBusy)
+                    Button("保存", action: save).disabled(validKg == nil)
                 }
             }
             .onAppear {
@@ -67,21 +71,35 @@ struct WeightEditView: View {
     }
 
     private func save() {
-        guard let kg = Double(kgText), kg > 10, kg < 500 else {
+        guard let kg = validKg else {
             error = "请输入有效体重（10~500 kg）"
+            Haptics.warning()
             return
         }
-        isBusy = true
         error = nil
         let dateStr = WeightRecord.dateFormatter.string(from: date)
+        let noteText = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        let oldDate = editing?.date
+
+        // 乐观更新：本地立即生效并关闭面板，网络在后台完成
         Task {
-            defer { isBusy = false }
+            await state.applyLocalWeight(date: dateStr, kg: kg, note: noteText)
+            await MainActor.run {
+                Haptics.success()
+                dismiss()
+            }
             do {
-                _ = try await APIClient.shared.saveWeight(date: dateStr, kg: kg, note: note)
+                _ = try await APIClient.shared.saveWeight(date: dateStr, kg: kg, note: noteText)
+                // 编辑时改了日期：把旧日期那条删掉，避免出现两条
+                if let old = oldDate, old != dateStr {
+                    try? await APIClient.shared.deleteWeight(date: old)
+                    await state.removeLocalWeights(dates: [old])
+                }
                 await state.refreshWeights()
-                await MainActor.run { dismiss() }
-            } catch let err {
-                await MainActor.run { error = err.localizedDescription }
+            } catch {
+                // 断网也不丢记录：进待同步队列，下次启动自动补传
+                PendingSync.add(date: dateStr, kg: kg, note: noteText)
+                await state.showToast("已存本地，联网后自动同步")
             }
         }
     }

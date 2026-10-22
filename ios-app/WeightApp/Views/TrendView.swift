@@ -6,14 +6,28 @@ struct TrendChartView: View {
     let weights: [WeightRecord]   // 升序
     var height: CGFloat = 200
     var showDetail: Bool = true   // 是否显示坐标轴/标签
+    var targetKg: Double? = nil   // 目标线（距离过远时自动忽略）
+    var showAverage: Bool = false // 叠加 7 日移动平均虚线
 
-    private var minKg: Double { weights.map { $0.kg }.min() ?? 0 }
-    private var maxKg: Double { weights.map { $0.kg }.max() ?? 1 }
+    private var rawMin: Double { weights.map { $0.kg }.min() ?? 0 }
+    private var rawMax: Double { weights.map { $0.kg }.max() ?? 1 }
+
+    /// 目标线离当前区间过远时不画，否则会把折线压成一条直线
+    private var targetInRange: Double? {
+        guard let t = targetKg else { return nil }
+        return (rawMin - t <= 12 && t <= rawMax + 2) ? t : nil
+    }
+
+    private var minKg: Double { min(rawMin, targetInRange ?? rawMin) }
+    private var maxKg: Double { max(rawMax, targetInRange ?? rawMax) }
     private var range: Double { max(maxKg - minKg, 0.5) }
 
     var body: some View {
         GeometryReader { geo in
-            let pts = normalizedPoints(in: geo.size)
+            let pts = normalizedPoints(weights, in: geo.size)
+            let avgPts = showAverage
+                ? normalizedPoints(TrendAnalysis.movingAverage(weights), in: geo.size)
+                : []
             ZStack {
                 // 渐变填充面积
                 if pts.count > 1 {
@@ -33,7 +47,26 @@ struct TrendChartView: View {
                 if showDetail {
                     grid(in: geo.size)
                 }
-                // 折线
+                // 目标线
+                if let target = targetInRange {
+                    let y = yPosition(for: target, in: geo.size)
+                    Path { p in
+                        p.move(to: CGPoint(x: 0, y: y))
+                        p.addLine(to: CGPoint(x: geo.size.width, y: y))
+                    }
+                    .stroke(Theme.warning.opacity(0.75), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                    Text("目标 \(String(format: "%.1f", target))")
+                        .font(.system(size: 9))
+                        .foregroundColor(Theme.warning)
+                        .position(x: 38, y: max(8, y - 9))
+                }
+                // 7 日移动平均（平滑日常称重噪声）
+                if avgPts.count > 1 {
+                    TrendPath(points: avgPts, range: range, minKg: minKg)
+                        .stroke(Theme.brandBlue.opacity(0.55),
+                                style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round, dash: [5, 4]))
+                }
+                // 实际折线
                 TrendPath(points: pts, range: range, minKg: minKg)
                     .stroke(Theme.brandDeep, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
                 // 数据点
@@ -49,17 +82,23 @@ struct TrendChartView: View {
     }
 
     /// 把体重数据映射成画布坐标
-    private func normalizedPoints(in size: CGSize) -> [CGPoint] {
-        guard weights.count > 1 else { return [] }
+    private func normalizedPoints(_ series: [WeightRecord], in size: CGSize) -> [CGPoint] {
+        guard series.count > 1 else { return [] }
         let pad: CGFloat = 16
         let w = size.width - pad * 2
         let h = size.height - pad * 2
-        let n = weights.count
-        return weights.enumerated().map { idx, rec in
+        let n = series.count
+        return series.enumerated().map { idx, rec in
             let x = pad + (n == 1 ? 0 : CGFloat(idx) * w / CGFloat(n - 1))
             let y = pad + CGFloat(1 - (rec.kg - minKg) / range) * h
             return CGPoint(x: x, y: y)
         }
+    }
+
+    private func yPosition(for kg: Double, in size: CGSize) -> CGFloat {
+        let pad: CGFloat = 16
+        let h = size.height - pad * 2
+        return pad + CGFloat(1 - (kg - minKg) / range) * h
     }
 
     private func grid(in size: CGSize) -> some View {
@@ -113,17 +152,19 @@ struct TrendView: View {
     @EnvironmentObject var state: AppState
     @Environment(\.dismiss) private var dismiss
 
-    private var ascending: [WeightRecord] {
-        state.weights.sorted { $0.date < $1.date }
-    }
+    private var ascending: [WeightRecord] { state.sortedAsc }
 
     private var stats: (min: Double, max: Double, avg: Double, change: Double) {
         let kgs = ascending.map { $0.kg }
-        let min = kgs.min() ?? 0
-        let max = kgs.max() ?? 0
+        let minV = kgs.min() ?? 0
+        let maxV = kgs.max() ?? 0
         let avg = kgs.isEmpty ? 0 : kgs.reduce(0, +) / Double(kgs.count)
         let change = (kgs.last ?? 0) - (kgs.first ?? 0)
-        return (min, max, avg, change)
+        return (minV, maxV, avg, change)
+    }
+
+    private var forecast: TrendAnalysis.Forecast? {
+        TrendAnalysis.forecast(ascending, targetKg: state.user?.target_kg)
     }
 
     var body: some View {
@@ -134,13 +175,44 @@ struct TrendView: View {
                     HStack(spacing: 0) {
                         statItem("区间", String(format: "%.1f–%.1f", stats.min, stats.max))
                         statItem("平均", String(format: "%.1f", stats.avg))
-                        statItem("变化", String(format: "%+.1f", stats.change))
+                        statItem("变化", String(format: "%+.1f", stats.change),
+                                 color: stats.change < 0 ? Theme.success : (stats.change > 0 ? Theme.danger : .primary))
                     }
                     .padding(.vertical, 8)
 
                     // 大图
-                    TrendChartView(weights: ascending, height: 260, showDetail: true)
+                    TrendChartView(weights: ascending,
+                                   height: 260,
+                                   showDetail: true,
+                                   targetKg: state.user?.target_kg,
+                                   showAverage: true)
                         .padding(.horizontal, 8)
+
+                    // 图例
+                    HStack(spacing: 14) {
+                        legendItem("实际", color: Theme.brandDeep, dashed: false)
+                        legendItem("7 日均线", color: Theme.brandBlue.opacity(0.7), dashed: true)
+                        if state.user?.target_kg != nil {
+                            legendItem("目标", color: Theme.warning, dashed: true)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+
+                    // 预测
+                    if let f = forecast {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(forecastText(f))
+                                .font(.subheadline)
+                            Text("按最近 3 周趋势估算（\(TrendAnalysis.confidenceText(f.confidence))），仅供参考")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Theme.brandBlue.opacity(0.07))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .padding(.horizontal, 8)
+                    }
 
                     Text("按日期升序，共 \(ascending.count) 条")
                         .font(.caption)
@@ -159,10 +231,30 @@ struct TrendView: View {
         }
     }
 
-    private func statItem(_ title: String, _ value: String) -> some View {
+    private func forecastText(_ f: TrendAnalysis.Forecast) -> String {
+        guard let d = f.daysToTarget else {
+            return String(format: "最近趋势为每周 %+.1f kg，暂时看不出达标时间", f.weeklyChangeKg)
+        }
+        if d == 0 { return "已经达到目标体重" }
+        guard let date = f.targetDate else { return "预计 \(d) 天后达到目标" }
+        return String(format: "按最近趋势（每周 %+.1f kg），预计 %@ 达到目标", f.weeklyChangeKg, TrendAnalysis.shortDate(date))
+    }
+
+    private func legendItem(_ title: String, color: Color, dashed: Bool) -> some View {
+        HStack(spacing: 5) {
+            RoundedRectangle(cornerRadius: 1)
+                .fill(color)
+                .frame(width: 14, height: dashed ? 1.5 : 2.5)
+            Text(title).font(.caption2).foregroundColor(.secondary)
+        }
+    }
+
+    private func statItem(_ title: String, _ value: String, color: Color = .primary) -> some View {
         VStack(spacing: 4) {
             Text(value)
                 .font(.headline)
+                .foregroundColor(color)
+                .monospacedDigit()
             Text(title)
                 .font(.caption)
                 .foregroundColor(.secondary)

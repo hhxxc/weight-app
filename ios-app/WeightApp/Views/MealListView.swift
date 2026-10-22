@@ -18,6 +18,18 @@ struct MealListView: View {
         state.meals.filter { $0.date == dateStr }
     }
 
+    /// 当日营养合计
+    private var dayTotal: (kcal: Double, protein: Double, fat: Double, carbs: Double) {
+        var k = 0.0, p = 0.0, f = 0.0, c = 0.0
+        for m in dayMeals {
+            k += m.kcal ?? 0
+            p += m.protein_g ?? 0
+            f += m.fat_g ?? 0
+            c += m.carbs_g ?? 0
+        }
+        return (k, p, f, c)
+    }
+
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
@@ -34,6 +46,23 @@ struct MealListView: View {
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 8)
+
+                // 当日合计（有记录才显示）
+                if !dayMeals.isEmpty {
+                    HStack(spacing: 12) {
+                        Label("\(Int(dayTotal.kcal.rounded())) 千卡", systemImage: "flame.fill")
+                            .foregroundColor(Theme.warning)
+                        Text("蛋白 \(Int(dayTotal.protein.rounded()))g")
+                        Text("脂肪 \(Int(dayTotal.fat.rounded()))g")
+                        Text("碳水 \(Int(dayTotal.carbs.rounded()))g")
+                        Spacer()
+                    }
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                    .transition(.opacity)
+                }
 
                 Divider()
 
@@ -103,6 +132,7 @@ struct MealListView: View {
                         .onDelete(perform: deleteItems)
                     }
                     .listStyle(.plain)
+                    .refreshable { await state.refreshMeals(date: dateStr) }
                 }
 
                 // 底部操作栏：拍照识图为主操作
@@ -192,16 +222,23 @@ struct MealListView: View {
     private func shiftDay(_ d: Int) {
         if let nd = Calendar.current.date(byAdding: .day, value: d, to: selectedDate) {
             selectedDate = nd
+            Haptics.tap()
         }
     }
 
     private func deleteItems(at offsets: IndexSet) {
         let items = offsets.map { dayMeals[$0] }
+        Haptics.tap()
         Task {
+            var failed = 0
             for m in items {
-                try? await APIClient.shared.deleteMeal(id: m.id)
+                do { try await APIClient.shared.deleteMeal(id: m.id) }
+                catch { failed += 1 }
             }
             await state.refreshMeals(date: dateStr)
+            await MainActor.run {
+                if failed > 0 { Haptics.error() } else { Haptics.success() }
+            }
         }
     }
 }

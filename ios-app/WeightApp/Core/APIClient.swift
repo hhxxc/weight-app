@@ -38,9 +38,16 @@ final class APIClient {
     private let tokenKey = "weight.token.fallback"
 
     private init() {
+        // 图片走 URLCache 磁盘缓存：食物照片二次浏览不再重复下载
+        URLCache.shared = URLCache(memoryCapacity: 32 * 1024 * 1024,
+                                   diskCapacity: 256 * 1024 * 1024,
+                                   diskPath: "weightapp-images")
+
         let cfg = URLSessionConfiguration.default
-        cfg.timeoutIntervalForRequest = 30   // AI 识图需要较长时间
+        cfg.timeoutIntervalForRequest = 15   // 普通接口快速失败（AI 接口单独放宽）
         cfg.timeoutIntervalForResource = 90
+        cfg.urlCache = URLCache.shared
+        cfg.requestCachePolicy = .useProtocolCachePolicy
         session = URLSession(configuration: cfg)
 
         activeServer = UserDefaults.standard.string(forKey: serverKey) ?? AppConfig.defaultServer
@@ -91,28 +98,42 @@ final class APIClient {
     private func request<T: Decodable>(_ method: String, _ path: String,
                                        body: Encodable? = nil,
                                        auth: Bool = true) async throws -> T {
-        // 依次尝试主备地址
+        // 依次尝试主备地址；网络抖动时同一地址先快速重试一次
         var lastError: APIError = .badURL
         for server in candidateServers {
-            do {
-                let r: T = try await requestOnce(method, server, path, body: body, auth: auth)
-                // 成功：记住这个地址（主备自动切换生效）
-                if server != activeServer {
-                    activeServer = server
-                    UserDefaults.standard.set(server, forKey: serverKey)
-                    AppLogger.shared.log("服务器切换为：\(server)")
+            for attempt in 0..<2 {
+                do {
+                    let r: T = try await requestOnce(method, server, path, body: body, auth: auth)
+                    // 成功：记住这个地址（主备自动切换生效）
+                    if server != activeServer {
+                        activeServer = server
+                        UserDefaults.standard.set(server, forKey: serverKey)
+                        AppLogger.shared.log("服务器切换为：\(server)")
+                    }
+                    return r
+                } catch APIError.unauthorized {
+                    // 401 是业务层错误，不该换地址重试，直接抛
+                    throw APIError.unauthorized
+                } catch let e as APIError {
+                    lastError = e
+                    AppLogger.shared.log("请求失败 \(server)\(path) 第\(attempt + 1)次: \(e.errorDescription ?? "未知")")
+                    var retryable = false
+                    if case .network = e { retryable = true }
+                    if retryable && attempt == 0 {
+                        try? await Task.sleep(nanoseconds: 350_000_000)
+                        continue
+                    }
+                    break
                 }
-                return r
-            } catch APIError.unauthorized {
-                // 401 是业务层错误，不该换地址重试，直接抛
-                throw APIError.unauthorized
-            } catch let e as APIError {
-                lastError = e
-                AppLogger.shared.log("请求失败 \(server)\(path): \(e.errorDescription ?? "未知")")
-                continue
             }
         }
         throw lastError
+    }
+
+    /// 按接口类型分配超时：AI 识图/上传/生成建议慢，普通 CRUD 快速失败
+    private func timeoutSeconds(for path: String) -> TimeInterval {
+        if path.hasPrefix("/foods") || path.hasPrefix("/upload") || path.hasPrefix("/advice") { return 60 }
+        return 15
     }
 
     private func requestOnce<T: Decodable>(_ method: String, _ server: String, _ path: String,
@@ -122,6 +143,7 @@ final class APIClient {
         }
         var req = URLRequest(url: url)
         req.httpMethod = method
+        req.timeoutInterval = timeoutSeconds(for: path)
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if auth {
             guard let t = token else { throw APIError.noToken }
@@ -177,13 +199,15 @@ final class APIClient {
 
     func fetchMe() async throws -> UserProfile {
         let r: [String: UserProfile] = try await request("GET", "/me")
-        return r["user"]!
+        guard let u = r["user"] else { throw APIError.decode }
+        return u
     }
 
     struct UpdateMeBody: Encodable { let nickname: String; let height_cm: Double?; let target_kg: Double? }
     func updateMe(nickname: String, heightCm: Double?, targetKg: Double?) async throws -> UserProfile {
         let r: [String: UserProfile] = try await request("PUT", "/me", body: UpdateMeBody(nickname: nickname, height_cm: heightCm, target_kg: targetKg))
-        return r["user"]!
+        guard let u = r["user"] else { throw APIError.decode }
+        return u
     }
 
     func fetchWeights() async throws -> [WeightRecord] {

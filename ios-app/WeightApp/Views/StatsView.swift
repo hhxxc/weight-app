@@ -2,10 +2,18 @@ import SwiftUI
 
 /// 分析页：体重/卡路里/营养汇总 + 趋势图 + AI 建议
 struct StatsView: View {
+    @EnvironmentObject var state: AppState
     @State private var stats: APIClient.StatsResponse?
     @State private var advice: String?
     @State private var loadingAdvice = false
     @State private var error: String?
+
+    private let adviceKey = "stats.advice.text"
+    private let adviceStampKey = "stats.advice.stamp"
+
+    private var forecast: TrendAnalysis.Forecast? {
+        TrendAnalysis.forecast(state.weights, targetKg: state.user?.target_kg)
+    }
 
     var body: some View {
         NavigationView {
@@ -25,7 +33,10 @@ struct StatsView: View {
                 }
             }
             .navigationTitle("分析")
-            .task { await load() }
+            .task {
+                loadCachedAdvice()
+                await load()
+            }
             .refreshable { await load() }
         }
         .navigationViewStyle(.stack)
@@ -44,7 +55,19 @@ struct StatsView: View {
 
             // 体重模块
             Section {
+                if let f = forecast {
+                    HStack(spacing: 0) {
+                        let week = TrendAnalysis.weekDelta(state.weights)
+                        statCell("本周变化", week.map { String(format: "%+.1f kg", $0) } ?? "—",
+                                 color: trendColor(week))
+                        statCell("周均速度", String(format: "%+.1f kg", f.weeklyChangeKg),
+                                 color: trendColor(f.weeklyChangeKg))
+                        statCell("预计达标", TrendAnalysis.targetText(f))
+                    }
+                }
                 Text("已记录 \(s.weight.record_count) 条体重")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             } header: {
                 sectionHeader("体重", icon: "scalemass.fill")
             }
@@ -178,6 +201,25 @@ struct StatsView: View {
         .frame(maxWidth: .infinity)
     }
 
+    private func statCell(_ title: String, _ value: String, color: Color = .primary) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.subheadline.bold())
+                .foregroundColor(color)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(title).font(.caption).foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// 减重为绿色（向好），增重为橙色（提醒），持平为默认色
+    private func trendColor(_ v: Double?) -> Color {
+        guard let v = v, abs(v) >= 0.05 else { return .primary }
+        return v < 0 ? Theme.success : Theme.warning
+    }
+
     private func macroBar(_ name: String, _ v: Double, _ color: Color) -> some View {
         VStack(spacing: 5) {
             HStack(spacing: 5) {
@@ -227,13 +269,31 @@ struct StatsView: View {
     private func generateAdvice() {
         loadingAdvice = true
         Task {
-            defer { loadingAdvice = false }
             do {
                 let a = try await APIClient.shared.fetchAdvice()
-                await MainActor.run { advice = a }
+                await MainActor.run {
+                    advice = a
+                    loadingAdvice = false
+                    // 缓存 6 小时：避免每次进页面都烧一次 AI 调用
+                    UserDefaults.standard.set(a, forKey: adviceKey)
+                    UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: adviceStampKey)
+                }
             } catch let err {
-                await MainActor.run { advice = "生成失败：\(err.localizedDescription)" }
+                await MainActor.run {
+                    advice = "生成失败：\(err.localizedDescription)"
+                    loadingAdvice = false
+                    Haptics.error()
+                }
             }
+        }
+    }
+
+    /// 6 小时内的建议直接复用，打开分析页即有内容
+    private func loadCachedAdvice() {
+        let stamp = UserDefaults.standard.double(forKey: adviceStampKey)
+        guard stamp > 0, Date().timeIntervalSince1970 - stamp < 6 * 3600 else { return }
+        if let cached = UserDefaults.standard.string(forKey: adviceKey), !cached.isEmpty {
+            advice = cached
         }
     }
 }

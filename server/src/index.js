@@ -145,8 +145,11 @@ route('PUT', '/me', async (req, res) => {
 
 // ---- 体重 ----
 route('GET', '/weights', (req, res) => {
-  const rows = db.prepare('SELECT id,date,kg,note FROM weights WHERE user_id=? ORDER BY date DESC')
-    .all(req.user.id);
+  // 可选 limit（默认 5000，最多 10000）：防止异常数据把响应撑大
+  const raw = parseInt(req.query.get('limit') || '', 10);
+  const limit = Number.isFinite(raw) ? Math.min(Math.max(raw, 1), 10000) : 5000;
+  const rows = db.prepare('SELECT id,date,kg,note FROM weights WHERE user_id=? ORDER BY date DESC LIMIT ?')
+    .all(req.user.id, limit);
   json(res, 200, { items: rows });
 }, true);
 
@@ -368,7 +371,13 @@ const server = http.createServer(async (req, res) => {
     const ext = (file.split('.').pop() || '').toLowerCase();
     const types = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
     const data = fs.readFileSync(fp);
-    res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream', 'Content-Length': data.length });
+    // 文件名是「时间戳_随机数」，内容不会变：允许客户端长期缓存，
+    // 食物照片第二次浏览不再走网络（iOS 端 URLCache 会命中）
+    res.writeHead(200, {
+      'Content-Type': types[ext] || 'application/octet-stream',
+      'Content-Length': data.length,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    });
     res.end(data);
     return;
   }
