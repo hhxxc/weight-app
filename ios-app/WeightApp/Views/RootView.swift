@@ -33,7 +33,10 @@ struct RootView: View {
         .onChange(of: scenePhase) { phase in
             // 回到前台时补传离线记录（守卫在 AppState 内部，重复调用安全）
             if phase == .active, state.isLoggedIn {
-                Task { await state.flushPending() }
+                Task {
+                    await state.flushPending()
+                    await state.refreshTodaySummary()
+                }
             }
         }
         .alert("发现新版本 v\(state.pendingUpdate?.version ?? "")",

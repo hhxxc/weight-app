@@ -8,6 +8,8 @@ struct WeightListView: View {
     @State private var pendingDelete: [WeightRecord] = []
     @State private var showDeleteConfirm = false
     @State private var visibleMonthCount = 3
+    @State private var showQuickFrequent = false
+    @State private var showQuickAdd = false
 
     private var latest: WeightRecord? { state.sortedDesc.first }
 
@@ -80,6 +82,12 @@ struct WeightListView: View {
             }
             .sheet(isPresented: $showTrend) {
                 TrendView()
+            }
+            .sheet(isPresented: $showQuickFrequent) {
+                FrequentMealsView(dateStr: WeightRecord.dateFormatter.string(from: Date()))
+            }
+            .sheet(isPresented: $showQuickAdd) {
+                MealEditView(dateStr: WeightRecord.dateFormatter.string(from: Date()))
             }
             .confirmationDialog(deleteTitle, isPresented: $showDeleteConfirm, titleVisibility: .visible) {
                 Button("删除", role: .destructive) { performDelete() }
@@ -173,6 +181,11 @@ struct WeightListView: View {
                     .listRowBackground(Color.clear)
             }
 
+            // 今日饮食预算（一眼知道还能吃多少）
+            Section {
+                todayMealCard
+            }
+
             // 进度预测（有目标体重且记录足够时才出现）
             if let f = forecast {
                 Section {
@@ -259,6 +272,78 @@ struct WeightListView: View {
                     .font(.caption).foregroundColor(.secondary)
                     .frame(width: 70, alignment: .trailing)
                     .monospacedDigit()
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    // MARK: - 今日饮食
+
+    private var todayMealCard: some View {
+        let target = state.user?.kcalTarget(currentKg: state.sortedDesc.first?.kg)
+        let kcal = state.todayKcal
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "fork.knife")
+                    .font(.caption)
+                    .foregroundColor(Theme.brandDeep)
+                Text("今日饮食")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(Theme.brandDeep)
+                if state.todayKcalLoaded {
+                    Text("\(state.todayMealCount) 条")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Menu {
+                    Button {
+                        Haptics.tap()
+                        showQuickFrequent = true
+                    } label: {
+                        Label("常吃食物", systemImage: "clock.arrow.circlepath")
+                    }
+                    Button {
+                        Haptics.tap()
+                        showQuickAdd = true
+                    } label: {
+                        Label("手动记录", systemImage: "square.and.pencil")
+                    }
+                } label: {
+                    Label("记一笔", systemImage: "plus.circle.fill")
+                        .font(.caption.bold())
+                        .foregroundColor(Theme.brandDeep)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Theme.brandBlue.opacity(0.12))
+                        .clipShape(Capsule())
+                }
+            }
+
+            if !state.todayKcalLoaded {
+                Text("正在读取今日记录…")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            } else if let t = target, t > 0 {
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text("\(Int(kcal.rounded()))")
+                        .font(.title3.bold())
+                        .monospacedDigit()
+                    Text("/ \(Int(t)) 千卡")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(kcal > t ? "超出 \(Int((kcal - t).rounded()))" : "还剩 \(Int((t - kcal).rounded()))")
+                        .font(.caption.bold())
+                        .foregroundColor(kcal > t ? Theme.danger : Theme.success)
+                }
+                ProgressView(value: min(1, max(0, kcal / t)))
+                    .tint(kcal > t ? Theme.danger : Theme.brandBlue)
+            } else {
+                Text("还没设置每日热量目标，去「我的 → 个人资料」填一个吧")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
             }
         }
         .padding(.vertical, 2)

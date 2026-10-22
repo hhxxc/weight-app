@@ -51,6 +51,9 @@ struct ProfileView: View {
                     Button(action: exportWeights) {
                         Label("导出体重 CSV", systemImage: "square.and.arrow.up")
                     }
+                    Button(action: exportMeals) {
+                        Label("导出饮食 CSV", systemImage: "tablecells")
+                    }
                     NavigationLink {
                         ServerSettingsView()
                     } label: {
@@ -130,6 +133,25 @@ struct ProfileView: View {
         }
         IPAShare.share(fileURL: url, title: "体重记录导出")
         Haptics.success()
+    }
+
+    /// 导出饮食 CSV：拉全量后分享（记录多时稍慢，转圈提示由系统分享承担）
+    private func exportMeals() {
+        Task {
+            do {
+                let all = try await APIClient.shared.fetchMeals(date: nil)
+                guard let url = DataExport.mealsCSV(all) else {
+                    await MainActor.run { state.showToast("还没有可导出的饮食记录") }
+                    return
+                }
+                await MainActor.run {
+                    IPAShare.share(fileURL: url, title: "饮食记录导出")
+                    Haptics.success()
+                }
+            } catch {
+                await MainActor.run { state.showToast("导出失败：\(error.localizedDescription)") }
+            }
+        }
     }
 
     /// 按当前选择的时间重新注册每日提醒

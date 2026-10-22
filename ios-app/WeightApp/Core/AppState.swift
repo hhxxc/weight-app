@@ -23,6 +23,10 @@ final class AppState: ObservableObject {
     @Published private(set) var mealsDate: String?
     /// 饮食请求进行中（切到未缓存的日期时显示加载态）
     @Published private(set) var isLoadingMeals = false
+    /// 今日已摄入（首页卡片用，来自 /meals/summary 或当天 meals）
+    @Published private(set) var todayKcal: Double = 0
+    @Published private(set) var todayMealCount: Int = 0
+    @Published private(set) var todayKcalLoaded = false
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var pendingUpdate: PendingUpdate?
@@ -157,6 +161,7 @@ final class AppState: ObservableObject {
             cacheSnapshot()
             AppLogger.shared.log("启动加载：\(w.count) 条体重记录")
             await flushPending()
+            await refreshTodaySummary()
         } catch APIError.unauthorized {
             forceLogout()
         } catch {
@@ -201,10 +206,12 @@ final class AppState: ObservableObject {
         if let cached = mealCache[d] {
             meals = cached
             mealsDate = d
+            syncToday(from: cached, date: d)
         } else if let disk = CacheStore.load([MealRecord].self, "meals-\(d)") {
             rememberMeals(d, disk)
             meals = disk
             mealsDate = d
+            syncToday(from: disk, date: d)
         }
 
         // 2) 再拉最新；期间用户切了日期就丢弃这次结果，避免串台
@@ -216,12 +223,50 @@ final class AppState: ObservableObject {
             guard mealRequestDate == d else { return }
             meals = fresh
             mealsDate = d
+            syncToday(from: fresh, date: d)
             rememberMeals(d, fresh)
             CacheStore.save(fresh, "meals-\(d)")
         } catch APIError.unauthorized {
             forceLogout()
         } catch {
             AppLogger.shared.log("刷新饮食失败(\(d))：\(error.localizedDescription)")
+        }
+    }
+
+    /// 把某天的饮食汇总同步到「今日」指标（首页卡片）
+    private func syncToday(from list: [MealRecord], date: String) {
+        guard date == WeightRecord.dateFormatter.string(from: Date()) else { return }
+        todayKcal = list.reduce(0.0) { $0 + ($1.kcal ?? 0) }
+        todayMealCount = list.count
+        todayKcalLoaded = true
+    }
+
+    /// 拉今日汇总（首页未打开饮食页时也能显示预算）
+    @MainActor
+    func refreshTodaySummary() async {
+        let today = WeightRecord.dateFormatter.string(from: Date())
+        if mealsDate == today {
+            syncToday(from: meals, date: today)
+            return
+        }
+        do {
+            let items = try await APIClient.shared.fetchMealSummary(from: today, to: today)
+            if let first = items.first {
+                todayKcal = first.kcal ?? 0
+                todayMealCount = first.count
+            } else {
+                todayKcal = 0
+                todayMealCount = 0
+            }
+            todayKcalLoaded = true
+        } catch {
+            // 拉不到就退回本地缓存；再没有就显示 0，避免一直卡在「读取中」
+            let cached = cachedMeals(for: today)
+            if !cached.isEmpty {
+                syncToday(from: cached, date: today)
+            } else {
+                todayKcalLoaded = true
+            }
         }
     }
 

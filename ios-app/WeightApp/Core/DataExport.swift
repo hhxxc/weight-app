@@ -29,4 +29,48 @@ enum DataExport {
         guard s.contains(",") || s.contains("\"") || s.contains("\n") else { return s }
         return "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\""
     }
+
+    /// 饮食记录导出（全量）
+    static func mealsCSV(_ meals: [MealRecord]) -> URL? {
+        guard !meals.isEmpty else { return nil }
+        var lines = ["日期,餐次,内容,卡路里(千卡),蛋白质(g),脂肪(g),碳水(g)"]
+        let sorted = meals.sorted { a, b in
+            a.date == b.date ? a.id < b.id : a.date < b.date
+        }
+        for m in sorted {
+            let cols = [
+                m.date,
+                typeLabel(m.type),
+                escape(m.content),
+                num(m.kcal),
+                num(m.protein_g),
+                num(m.fat_g),
+                num(m.carbs_g),
+            ]
+            lines.append(cols.joined(separator: ","))
+        }
+        let text = "\u{FEFF}" + lines.joined(separator: "\r\n")
+        let name = "饮食记录-\(WeightRecord.dateFormatter.string(from: Date())).csv"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        do {
+            try text.write(to: url, atomically: true, encoding: .utf8)
+            return url
+        } catch {
+            return nil
+        }
+    }
+
+    private static func typeLabel(_ t: String) -> String {
+        switch t {
+        case "breakfast": return "早餐"
+        case "lunch": return "午餐"
+        case "dinner": return "晚餐"
+        default: return "加餐"
+        }
+    }
+
+    private static func num(_ v: Double?) -> String {
+        guard let v = v else { return "" }
+        return String(format: "%.0f", v)
+    }
 }
