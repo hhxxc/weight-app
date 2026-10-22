@@ -98,6 +98,7 @@ docker rm -f "$CONTAINER_NAME" 2>/dev/null
 docker run -d --name "$CONTAINER_NAME" --restart unless-stopped \
     -p "$HOST_PORT:3000" \
     -e "JWT_SECRET=$SECRET" \
+    -e "ADMIN_USERNAME=${ADMIN_USERNAME:-hhxxc}" \
     -v "$APP_DIR/data:/data" \
     -v /volume2/docker/giliconcloude_key.txt:/data/giliconcloude_key.txt:ro \
     "$IMAGE_NAME" >> "$LOG" 2>&1 || { log "FAIL: docker run 失败"; exit 1; }

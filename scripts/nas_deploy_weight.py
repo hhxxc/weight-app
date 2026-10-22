@@ -143,24 +143,34 @@ def main():
         # 下载镜像 tar.gz（仓库 public，Release 资产匿名可下载）→ docker load → run
         asset_url = "https://github.com/hhxxc/weight-app/releases/latest/download/weight-server.tar.gz"
         print("下载镜像 tar.gz 并 docker load …")
+        # 分步执行，任一步失败立即中止（避免下载损坏时还去重建容器）
+        out, err = run(client, "curl -sL -m 1800 -o /tmp/weight-server.tar.gz '%s'" % asset_url, timeout=900)
+        out2, err2 = run(client, "gzip -t /tmp/weight-server.tar.gz", timeout=60)
+        if err2.strip() or "not in gzip" in out2:
+            print("[FAIL] 下载的镜像 tar 无效（可能网络抖动导致不完整），未重建容器")
+            run(client, "rm -f /tmp/weight-server.tar.gz")
+            return
+        out3, err3 = run(client, "docker load -i /tmp/weight-server.tar.gz && rm -f /tmp/weight-server.tar.gz", timeout=300)
+        print(out3.strip())
+        if err3.strip():
+            print("[stderr] %s" % err3.strip()[:300])
+
+        print("重建容器…")
         run_cmd = (
-            "curl -sL -m 1800 -o /tmp/weight-server.tar.gz '%s' && "
-            "gzip -t /tmp/weight-server.tar.gz && "
-            "docker load -i /tmp/weight-server.tar.gz && "
-            "rm -f /tmp/weight-server.tar.gz && "
             "docker rm -f %s 2>/dev/null; "
             "docker run -d --name %s --restart unless-stopped "
             "-p %s:3000 "
             "-e JWT_SECRET=%s "
+            "-e ADMIN_USERNAME=hhxxc "
             "-v %s/data:/data "
             "-v /volume2/docker/giliconcloude_key.txt:/data/giliconcloude_key.txt:ro "
             "weight-server:latest"
-            % (asset_url, CONTAINER_NAME, CONTAINER_NAME, HOST_PORT, shq(jwt_secret), shq(NAS_APP_DIR))
+            % (CONTAINER_NAME, CONTAINER_NAME, HOST_PORT, shq(jwt_secret), shq(NAS_APP_DIR))
         )
-        out, err = run(client, run_cmd, timeout=900)
+        out, err = run(client, run_cmd, timeout=120)
         print(out.strip())
         if err.strip():
-            print("[stderr] %s" % err.strip()[:500])
+            print("[stderr] %s" % err.strip()[:300])
 
         print("容器状态：")
         out, _ = run(client, "docker ps --filter name=%s --format '{{.Names}} {{.Status}} {{.Ports}}'" % CONTAINER_NAME)
