@@ -8,6 +8,9 @@ struct TrendChartView: View {
     var showDetail: Bool = true   // 是否显示坐标轴/标签
     var targetKg: Double? = nil   // 目标线（距离过远时自动忽略）
     var showAverage: Bool = false // 叠加 7 日移动平均虚线
+    var interactive: Bool = false // 长按/拖动查看某天数值
+
+    @State private var touchX: CGFloat?
 
     private var rawMin: Double { weights.map { $0.kg }.min() ?? 0 }
     private var rawMax: Double { weights.map { $0.kg }.max() ?? 1 }
@@ -76,20 +79,94 @@ struct TrendChartView: View {
                         .frame(width: idx == pts.count - 1 ? 8 : 5, height: idx == pts.count - 1 ? 8 : 5)
                         .position(p)
                 }
+                // 交互：横向滑动查看某天数值
+                if interactive, let tx = touchX, let idx = nearestIndex(tx, in: pts), idx < weights.count {
+                    let p = pts[idx]
+                    let rec = weights[idx]
+                    Path { path in
+                        path.move(to: CGPoint(x: p.x, y: 0))
+                        path.addLine(to: CGPoint(x: p.x, y: geo.size.height))
+                    }
+                    .stroke(Theme.brandDeep.opacity(0.22), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 13, height: 13)
+                        .overlay(Circle().stroke(Theme.brandDeep, lineWidth: 3))
+                        .position(p)
+
+                    VStack(spacing: 1) {
+                        Text(String(format: "%.1f kg", rec.kg))
+                            .font(.caption2.bold())
+                            .foregroundColor(.primary)
+                        Text(chineseDateString(rec.date))
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Color(UIColor.secondarySystemBackground))
+                            .shadow(color: Color.black.opacity(0.12), radius: 4, y: 2)
+                    )
+                    .position(x: min(max(p.x, 56), geo.size.width - 56), y: 22)
+                }
             }
+            .contentShape(Rectangle())
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        guard interactive else { return }
+                        // 只在横向滑动时激活，避免抢走页面的上下滚动
+                        if touchX == nil {
+                            let dx = abs(value.translation.width)
+                            let dy = abs(value.translation.height)
+                            guard dx > dy + 2 else { return }
+                        }
+                        touchX = value.location.x
+                    }
+                    .onEnded { _ in touchX = nil }
+            )
         }
         .frame(height: height)
     }
 
-    /// 把体重数据映射成画布坐标
+    /// 找离手指最近的数据点
+    private func nearestIndex(_ x: CGFloat, in pts: [CGPoint]) -> Int? {
+        guard !pts.isEmpty else { return nil }
+        var best = 0
+        var bestDist = CGFloat.greatestFiniteMagnitude
+        for (i, p) in pts.enumerated() {
+            let d = abs(p.x - x)
+            if d < bestDist {
+                bestDist = d
+                best = i
+            }
+        }
+        return best
+    }
+
+    /// 把体重数据映射成画布坐标（x 按真实日期比例，缺记录的日子留空而不是压缩）
     private func normalizedPoints(_ series: [WeightRecord], in size: CGSize) -> [CGPoint] {
         guard series.count > 1 else { return [] }
         let pad: CGFloat = 16
         let w = size.width - pad * 2
         let h = size.height - pad * 2
-        let n = series.count
+
+        let days = series.compactMap { $0.dateObj }
+        guard let firstDay = days.min(), let lastDay = days.max() else { return [] }
+        let total = lastDay.timeIntervalSince(firstDay)
+
         return series.enumerated().map { idx, rec in
-            let x = pad + (n == 1 ? 0 : CGFloat(idx) * w / CGFloat(n - 1))
+            let x: CGFloat
+            if total > 0 {
+                let ratio = (rec.dateObj ?? firstDay).timeIntervalSince(firstDay) / total
+                x = pad + CGFloat(ratio) * w
+            } else {
+                // 都是同一天：退化为等距
+                x = pad + CGFloat(idx) * w / CGFloat(max(1, series.count - 1))
+            }
             let y = pad + CGFloat(1 - (rec.kg - minKg) / range) * h
             return CGPoint(x: x, y: y)
         }
@@ -185,7 +262,13 @@ struct TrendView: View {
                                    height: 260,
                                    showDetail: true,
                                    targetKg: state.user?.target_kg,
-                                   showAverage: true)
+                                   showAverage: true,
+                                   interactive: true)
+                        .padding(.horizontal, 8)
+
+                    Text("在图表上左右滑动可查看某天的具体数值 · 横轴按真实日期间距排列")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
                         .padding(.horizontal, 8)
 
                     // 图例

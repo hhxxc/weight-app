@@ -113,6 +113,27 @@ enum TrendAnalysis {
         return last.kg - first.kg
     }
 
+    /// 连续记录天数：从今天（或昨天，若今天还没记）往前数不中断的天数
+    static func streak(_ weights: [WeightRecord]) -> Int {
+        let dates = Set(weights.map { $0.date })
+        guard !dates.isEmpty else { return 0 }
+        let cal = Calendar.current
+        var day = Date()
+        if !dates.contains(WeightRecord.dateFormatter.string(from: day)) {
+            guard let yesterday = cal.date(byAdding: .day, value: -1, to: day) else { return 0 }
+            day = yesterday
+        }
+        var count = 0
+        while count < 3650 {
+            let key = WeightRecord.dateFormatter.string(from: day)
+            guard dates.contains(key) else { break }
+            count += 1
+            guard let prev = cal.date(byAdding: .day, value: -1, to: day) else { break }
+            day = prev
+        }
+        return count
+    }
+
     /// 目标完成度 0~1（起始 → 目标）
     static func progress(_ weights: [WeightRecord], targetKg: Double?) -> Double? {
         guard let tg = targetKg,

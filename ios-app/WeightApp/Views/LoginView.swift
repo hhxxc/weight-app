@@ -4,11 +4,14 @@ import SwiftUI
 struct LoginView: View {
     @EnvironmentObject var state: AppState
 
-    @State private var username = ""
+    @State private var username = UserDefaults.standard.string(forKey: "login.lastUsername") ?? ""
     @State private var password = ""
     @State private var server = ""
     @State private var isBusy = false
     @State private var error: String?
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case username, password }
 
     var body: some View {
         NavigationView {
@@ -42,9 +45,11 @@ struct LoginView: View {
                             .textFieldStyle(.roundedBorder)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
+                            .focused($focusedField, equals: .username)
                             .padding(.vertical, 4)
                         SecureField("密码", text: $password)
                             .textFieldStyle(.roundedBorder)
+                            .focused($focusedField, equals: .password)
                             .padding(.vertical, 4)
                         TextField("服务器地址（留空用默认）", text: $server)
                             .textFieldStyle(.roundedBorder)
@@ -87,6 +92,14 @@ struct LoginView: View {
             }
             .background(Color(UIColor.systemBackground))
             .navigationBarHidden(true)
+            .onAppear {
+                // 老用户：用户名已记住，直接把光标放到密码框
+                if !username.isEmpty {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        focusedField = .password
+                    }
+                }
+            }
         }
     }
 
@@ -96,15 +109,24 @@ struct LoginView: View {
         if !server.trimmingCharacters(in: .whitespaces).isEmpty {
             APIClient.shared.setServer(server.trimmingCharacters(in: .whitespaces))
         }
+        let name = username.trimmingCharacters(in: .whitespaces)
         isBusy = true
         Task {
-            defer { isBusy = false }
             do {
-                let resp = try await APIClient.shared.login(username: username.trimmingCharacters(in: .whitespaces),
-                                                            password: password)
-                await MainActor.run { state.handleAuth(resp) }
+                let resp = try await APIClient.shared.login(username: name, password: password)
+                // 记住用户名，下次只需输密码
+                UserDefaults.standard.set(name, forKey: "login.lastUsername")
+                await MainActor.run {
+                    isBusy = false
+                    Haptics.success()
+                    state.handleAuth(resp)
+                }
             } catch let err {
-                await MainActor.run { error = err.localizedDescription }
+                await MainActor.run {
+                    isBusy = false
+                    Haptics.error()
+                    error = err.localizedDescription
+                }
             }
         }
     }

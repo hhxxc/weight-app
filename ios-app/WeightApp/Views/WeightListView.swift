@@ -267,7 +267,8 @@ struct WeightListView: View {
     // MARK: - 预测卡片
 
     private func forecastCard(_ f: TrendAnalysis.Forecast) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let streakDays = TrendAnalysis.streak(state.weights)
+        return VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label("进度预测", systemImage: "chart.line.flatten")
                     .font(.subheadline.weight(.semibold))
@@ -294,6 +295,19 @@ struct WeightListView: View {
                         .foregroundColor(.secondary)
                 }
             }
+
+            // 连续记录天数
+            HStack(spacing: 5) {
+                Image(systemName: "flame.fill")
+                    .foregroundColor(streakDays >= 7 ? Theme.warning : .secondary)
+                Text(streakDays > 0 ? "连续记录 \(streakDays) 天" : "今天还没记录，记一笔开始连续")
+                    .foregroundColor(.secondary)
+                if streakDays >= 7 {
+                    Text("· 保持住")
+                        .foregroundColor(Theme.warning)
+                }
+            }
+            .font(.caption2)
 
             // 数据太旧时提醒：预测会随后续记录变化
             if let lastDate = latest?.dateObj,
