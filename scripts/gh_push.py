@@ -112,10 +112,17 @@ def gh_cli_api(path, payload=None, method=None):
 
 
 def gh_api(path, payload=None, method=None):
-    """GitHub API 调用。直接走 gh CLI（它自己解决 DNS/代理，实测最稳）。
-    ⚠️ 不再走 urllib 直连 IP：硬编码 IP 会过期，直连会卡 30 秒超时（不是快速失败），
-    多个 blob 上传时累计超时。gh CLI 已验证稳定快速。"""
-    return gh_cli_api(path, payload, method)
+    """GitHub API 调用。优先 urllib 直连 GitHub IP（配合 _install_dns_override 绕开
+    本机坏掉的 DNS 和代理）；失败再回退 gh CLI。"""
+    try:
+        result = _http(path, method=method or "GET", payload=payload)
+        return result if isinstance(result, str) else json.dumps(result)
+    except urllib.error.HTTPError as e:
+        sys.stderr.write("直连返回 HTTP %s，回退 gh CLI…\n" % e.code)
+        return gh_cli_api(path, payload, method)
+    except Exception as e:  # noqa: BLE001 —— 回退到 gh CLI
+        sys.stderr.write("直连失败（%s），回退 gh CLI…\n" % e)
+        return gh_cli_api(path, payload, method)
 
 
 def repo_slug():
@@ -188,7 +195,6 @@ def main():
         raise SystemExit("本地没有相对远端的新提交；若远端已重写历史，请先 fetch 对齐")
     print("待推送 %d 个提交：%s → %s" % (len(commits), commits[0][:7], commits[-1][:7]))
 
-    prev_entries = set()
     parent = remote_head
     for csha in commits:
         raw = git("cat-file", "commit", csha)
@@ -211,10 +217,15 @@ def main():
             mode, _type, sha = meta.split()
             entries.append((path, mode, sha))
 
-        # 只上传相对上一层新增/变更的 blob（同 sha 的内容天然去重）
+        # 只上传相对 parent 真正变更/新增的 blob（其余 blob 远端已存在，tree 直接引用）。
+        # GitHub blob API 幂等：同内容同 sha，重传浪费请求，urllib 直连下会拖慢整个推送。
+        if parent:
+            changed = set(git("diff", "--name-only", parent, csha).split())
+        else:
+            changed = None  # 无 parent（根提交），全量上传
+
         for path, mode, sha in entries:
-            key = (path, sha)
-            if key in prev_entries:
+            if changed is not None and path not in changed:
                 continue
             content = git("cat-file", "blob", sha, binary=True)
             res = json.loads(gh_api("/repos/%s/git/blobs" % slug, {
@@ -222,7 +233,6 @@ def main():
                 "encoding": "base64"}, method="POST"))
             if res["sha"] != sha:
                 raise SystemExit("blob 不一致 %s：本地 %s 远端 %s" % (path, sha[:7], res["sha"][:7]))
-        prev_entries = {(p, s) for p, _m, s in entries}
 
         tree_res = json.loads(gh_api("/repos/%s/git/trees" % slug, {
             "tree": [{"path": p, "mode": m, "type": "blob", "sha": s} for p, m, s in entries],
