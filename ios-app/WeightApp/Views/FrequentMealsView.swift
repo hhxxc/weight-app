@@ -10,6 +10,7 @@ struct FrequentMealsView: View {
     @State private var items: [APIClient.FrequentMeal] = []
     @State private var loading = true
     @State private var savingContent: String?
+    @State private var error: String?
 
     var body: some View {
         NavigationView {
@@ -17,6 +18,25 @@ struct FrequentMealsView: View {
                 if loading {
                     ProgressView("读取常吃食物…")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error {
+                    VStack(spacing: 12) {
+                        Image(systemName: "wifi.exclamationmark")
+                            .font(.system(size: 40))
+                            .foregroundColor(.secondary)
+                        Text("读取失败")
+                            .font(.headline)
+                        Text(error)
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                        Button("重试") {
+                            loading = true
+                            Task { await load() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if items.isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "clock.arrow.circlepath")
@@ -93,9 +113,13 @@ struct FrequentMealsView: View {
             await MainActor.run {
                 items = r
                 loading = false
+                error = nil
             }
-        } catch {
-            await MainActor.run { loading = false }
+        } catch let err {
+            await MainActor.run {
+                loading = false
+                error = err.localizedDescription
+            }
         }
     }
 
