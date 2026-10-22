@@ -68,7 +68,7 @@ struct VoiceRecordView: View {
                 Button(action: toggleRecord) {
                     ZStack {
                         Circle()
-                            .fill(recognizer.isRecording ? Theme.danger : Theme.brandGradient)
+                            .fill(recognizer.isRecording ? Theme.danger : Theme.brandBlue)
                             .frame(width: 72, height: 72)
                         Image(systemName: recognizer.isRecording ? "stop.fill" : "mic.fill")
                             .font(.system(size: 28))
@@ -167,8 +167,8 @@ struct VoiceRecordView: View {
                 }
                 do {
                     try recognizer.start()
-                } catch {
-                    error = "无法启动录音：\(error.localizedDescription)"
+                } catch let err {
+                    error = "无法启动录音：\(err.localizedDescription)"
                 }
             }
         }
