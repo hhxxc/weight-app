@@ -5,6 +5,7 @@ struct FamilyView: View {
     @EnvironmentObject var state: AppState
 
     @State private var members: [APIClient.FamilyMember] = []
+    @State private var progress: [APIClient.FamilyProgress] = []
     @State private var loading = true
     @State private var error: String?
     @State private var showAdd = false
@@ -34,6 +35,18 @@ struct FamilyView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
+                    if !progress.isEmpty {
+                        Section {
+                            ForEach(progress) { p in
+                                progressRow(p)
+                            }
+                        } header: {
+                            Text("本周进度")
+                        } footer: {
+                            Text("变更是「本周均值」相对上一周的变化；绿色是下降，橙色是上升。")
+                        }
+                    }
+
                     Section {
                         ForEach(members) { m in
                             Button {
@@ -69,6 +82,53 @@ struct FamilyView: View {
             ResetPasswordView(member: m) { Task { await load() } }
         }
         .task { await load() }
+    }
+
+    private func progressRow(_ p: APIClient.FamilyProgress) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Theme.brandGradient)
+                    .frame(width: 34, height: 34)
+                Text(initial(name: p.nickname, username: p.username))
+                    .font(.subheadline.bold())
+                    .foregroundColor(.white)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(p.nickname.isEmpty ? p.username : p.nickname)
+                    .font(.subheadline.bold())
+                Text("体重 \(p.weight_days) 天 · 饮食 \(p.meal_days) 天")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(p.latest_kg.map { String(format: "%.1f kg", $0) } ?? "—")
+                    .font(.subheadline)
+                    .monospacedDigit()
+                Text(deltaText(p.delta_kg))
+                    .font(.caption2.bold())
+                    .foregroundColor(deltaColor(p.delta_kg))
+            }
+        }
+        .padding(.vertical, 3)
+    }
+
+    private func deltaText(_ d: Double?) -> String {
+        guard let d = d else { return "暂无对比" }
+        if abs(d) < 0.05 { return "基本持平" }
+        return String(format: "%+.1f kg", d)
+    }
+
+    /// 体重下降算好事：绿；上升提示：橙
+    private func deltaColor(_ d: Double?) -> Color {
+        guard let d = d, abs(d) >= 0.05 else { return .secondary }
+        return d < 0 ? Theme.success : Theme.warning
+    }
+
+    private func initial(name: String, username: String) -> String {
+        let text = name.isEmpty ? username : name
+        return String(text.prefix(1))
     }
 
     private func row(_ m: APIClient.FamilyMember) -> some View {
@@ -115,8 +175,10 @@ struct FamilyView: View {
     private func load() async {
         do {
             let list = try await APIClient.shared.fetchFamilyMembers()
+            let prog = (try? await APIClient.shared.fetchFamilyProgress()) ?? []
             await MainActor.run {
                 members = list
+                progress = prog
                 loading = false
                 error = nil
             }

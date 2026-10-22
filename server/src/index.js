@@ -232,6 +232,44 @@ route('POST', '/admin/users/:id/password', async (req, res) => {
   json(res, 200, { ok: true, username: target.username });
 }, true);
 
+// 家庭本周进度：每人最新体重 + 本周均值较上期变化 + 记录天数（仅管理员）
+route('GET', '/admin/progress', (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const days = Math.min(Math.max(parseInt(req.query.get('days') || '7', 10) || 7, 1), 90);
+  const dayStr = (ms) => new Date(ms + 8 * 3600 * 1000).toISOString().slice(0, 10);
+  const now = Date.now();
+  const from = dayStr(now - (days - 1) * 86400000);
+  const prevTo = dayStr(now - days * 86400000);
+  const prevFrom = dayStr(now - (days * 2 - 1) * 86400000);
+
+  const users = db.prepare('SELECT id, username, nickname, is_admin FROM users ORDER BY is_admin DESC, id ASC').all();
+  const round1 = (v) => Math.round(v * 10) / 10;
+
+  const items = users.map((u) => {
+    const latest = db.prepare('SELECT date, kg FROM weights WHERE user_id=? ORDER BY date DESC LIMIT 1').get(u.id);
+    const cur = db.prepare('SELECT AVG(kg) AS v, COUNT(*) AS c FROM weights WHERE user_id=? AND date>=?').get(u.id, from);
+    const prev = db.prepare('SELECT AVG(kg) AS v FROM weights WHERE user_id=? AND date>=? AND date<=?')
+      .get(u.id, prevFrom, prevTo);
+    const mealDays = db.prepare('SELECT COUNT(DISTINCT date) AS c FROM meals WHERE user_id=? AND date>=?')
+      .get(u.id, from).c;
+    const delta = cur.v != null && prev.v != null ? cur.v - prev.v : null;
+    return {
+      id: u.id,
+      username: u.username,
+      nickname: u.nickname,
+      is_admin: u.is_admin,
+      latest_kg: latest ? round1(latest.kg) : null,
+      latest_date: latest ? latest.date : null,
+      avg_kg: cur.v != null ? round1(cur.v) : null,
+      delta_kg: delta != null ? round1(delta) : null,
+      weight_days: cur.c || 0,
+      meal_days: mealDays || 0,
+    };
+  });
+
+  json(res, 200, { items, from, days });
+}, true);
+
 // ---- 体重 ----
 route('GET', '/weights', (req, res) => {
   // 可选 limit（默认 5000，最多 10000）：防止异常数据把响应撑大

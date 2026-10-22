@@ -287,6 +287,24 @@ final class APIClient {
         let meal_count: Int
     }
 
+    struct FamilyProgress: Decodable, Identifiable {
+        let id: Int
+        let username: String
+        let nickname: String
+        let is_admin: Int
+        let latest_kg: Double?
+        let latest_date: String?
+        let avg_kg: Double?
+        let delta_kg: Double?
+        let weight_days: Int
+        let meal_days: Int
+    }
+
+    func fetchFamilyProgress() async throws -> [FamilyProgress] {
+        let r: [String: [FamilyProgress]] = try await request("GET", "/admin/progress")
+        return r["items"] ?? []
+    }
+
     private struct SimpleOK: Decodable { let ok: Bool? }
 
     func fetchFamilyMembers() async throws -> [FamilyMember] {
