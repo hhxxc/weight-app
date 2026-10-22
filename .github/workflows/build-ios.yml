@@ -204,5 +204,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="$(gh release list --limit 1 --json tagName -q '.[0].tagName')"
-          echo "==> 追加镜像与源码包到 release: $TAG"
-          gh release upload "$TAG" weight-server.tar.gz server-src.tar.gz --clobber
+          echo "==> 追加源码包与镜像到 release: $TAG"
+          # 先传 13KB 的源码包：NAS 每 5 分钟轮询，先看到它就能走秒级通道，
+          # 不会因为「镜像已传、源码包还没传」的空档去下 79MB。
+          gh release upload "$TAG" server-src.tar.gz --clobber
+          gh release upload "$TAG" weight-server.tar.gz --clobber
