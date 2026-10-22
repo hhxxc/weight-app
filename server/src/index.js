@@ -42,7 +42,14 @@ function readBody(req) {
 }
 
 function publicUser(u) {
-  return { id: u.id, username: u.username, nickname: u.nickname, height_cm: u.height_cm, target_kg: u.target_kg };
+  return {
+    id: u.id,
+    username: u.username,
+    nickname: u.nickname,
+    height_cm: u.height_cm,
+    target_kg: u.target_kg,
+    daily_kcal_target: u.daily_kcal_target ?? null,
+  };
 }
 
 // 从请求里取鉴权后的用户；无效 token 返回 null
@@ -131,14 +138,20 @@ route('PUT', '/me', async (req, res) => {
   const nickname = b.nickname !== undefined ? String(b.nickname).slice(0, 32) : u.nickname;
   const height_cm = b.height_cm !== undefined ? (b.height_cm === null ? null : +b.height_cm) : u.height_cm;
   const target_kg = b.target_kg !== undefined ? (b.target_kg === null ? null : +b.target_kg) : u.target_kg;
+  const daily_kcal_target = b.daily_kcal_target !== undefined
+    ? (b.daily_kcal_target === null ? null : +b.daily_kcal_target)
+    : (u.daily_kcal_target ?? null);
   if (height_cm !== null && (!Number.isFinite(height_cm) || height_cm < 50 || height_cm > 260)) {
     return json(res, 400, { error: '身高需在 50~260cm 之间' });
   }
   if (target_kg !== null && (!Number.isFinite(target_kg) || target_kg < 10 || target_kg > 500)) {
     return json(res, 400, { error: '目标体重需在 10~500kg 之间' });
   }
-  db.prepare('UPDATE users SET nickname=?, height_cm=?, target_kg=? WHERE id=?')
-    .run(nickname, height_cm, target_kg, u.id);
+  if (daily_kcal_target !== null && (!Number.isFinite(daily_kcal_target) || daily_kcal_target < 500 || daily_kcal_target > 10000)) {
+    return json(res, 400, { error: '每日热量目标需在 500~10000 千卡之间' });
+  }
+  db.prepare('UPDATE users SET nickname=?, height_cm=?, target_kg=?, daily_kcal_target=? WHERE id=?')
+    .run(nickname, height_cm, target_kg, daily_kcal_target, u.id);
   const nu = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
   json(res, 200, { user: publicUser(nu) });
 }, true);

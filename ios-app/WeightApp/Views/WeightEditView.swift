@@ -9,6 +9,8 @@ struct WeightEditView: View {
     @State private var kgText = ""
     @State private var note = ""
     @State private var error: String?
+    @State private var pendingKg: Double?
+    @State private var showAnomalyAlert = false
 
     /// 编辑已有记录时传入
     var editing: WeightRecord?
@@ -67,6 +69,15 @@ struct WeightEditView: View {
                     note = e.note
                 }
             }
+            .alert("体重变化有点大", isPresented: $showAnomalyAlert) {
+                Button("确认录入") {
+                    if let kg = pendingKg { commit(kg) }
+                    pendingKg = nil
+                }
+                Button("取消", role: .cancel) { pendingKg = nil }
+            } message: {
+                Text(anomalyMessage)
+            }
         }
     }
 
@@ -76,6 +87,28 @@ struct WeightEditView: View {
             Haptics.warning()
             return
         }
+        let dateStr = WeightRecord.dateFormatter.string(from: date)
+
+        // 与最近另一条记录相差 ≥3kg 时二次确认，防手误
+        if let last = state.sortedDesc.first(where: { $0.date != dateStr }),
+           abs(kg - last.kg) >= 3 {
+            pendingKg = kg
+            showAnomalyAlert = true
+            Haptics.warning()
+            return
+        }
+        commit(kg)
+    }
+
+    private var anomalyMessage: String {
+        let dateStr = WeightRecord.dateFormatter.string(from: date)
+        guard let last = state.sortedDesc.first(where: { $0.date != dateStr }),
+              let kg = pendingKg else { return "确认这次录入的体重吗？" }
+        return String(format: "上次记录是 %.1f kg（%@），这次 %.1f kg，相差 %.1f kg。确认没输错吗？",
+                      last.kg, last.chineseDate, kg, abs(kg - last.kg))
+    }
+
+    private func commit(_ kg: Double) {
         error = nil
         let dateStr = WeightRecord.dateFormatter.string(from: date)
         let noteText = note.trimmingCharacters(in: .whitespacesAndNewlines)

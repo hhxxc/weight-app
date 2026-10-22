@@ -32,6 +32,61 @@ struct MealListView: View {
         return (k, p, f, c)
     }
 
+    /// 每日热量目标：手动设置优先，否则按当前体重估算
+    private var kcalTarget: Double? {
+        state.user?.kcalTarget(currentKg: state.sortedDesc.first?.kg)
+    }
+
+    private var summaryBar: some View {
+        VStack(spacing: 6) {
+            if let target = kcalTarget, target > 0 {
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text("\(Int(dayTotal.kcal.rounded()))")
+                        .font(.title3.bold())
+                        .monospacedDigit()
+                    Text("/ \(Int(target)) 千卡\(state.user?.isKcalTargetCustom == true ? "" : " · 自动")")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    if dayTotal.kcal > target {
+                        Text("超出 \(Int((dayTotal.kcal - target).rounded())) 千卡")
+                            .font(.caption.bold())
+                            .foregroundColor(Theme.danger)
+                    } else {
+                        Text("还剩 \(Int((target - dayTotal.kcal).rounded())) 千卡")
+                            .font(.caption.bold())
+                            .foregroundColor(Theme.success)
+                    }
+                }
+                ProgressView(value: min(1, max(0, dayTotal.kcal / target)))
+                    .tint(dayTotal.kcal > target ? Theme.danger : Theme.brandBlue)
+            } else {
+                HStack {
+                    Label("\(Int(dayTotal.kcal.rounded())) 千卡", systemImage: "flame.fill")
+                        .foregroundColor(Theme.warning)
+                    Spacer()
+                    Text("去「我的」设置热量目标")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            if !dayMeals.isEmpty {
+                HStack(spacing: 12) {
+                    Text("蛋白 \(Int(dayTotal.protein.rounded()))g")
+                    Text("脂肪 \(Int(dayTotal.fat.rounded()))g")
+                    Text("碳水 \(Int(dayTotal.carbs.rounded()))g")
+                    Spacer()
+                    Text("\(dayMeals.count) 条")
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 10)
+    }
+
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
@@ -49,22 +104,8 @@ struct MealListView: View {
                 .padding(.horizontal)
                 .padding(.vertical, 8)
 
-                // 当日合计（有记录才显示）
-                if !dayMeals.isEmpty {
-                    HStack(spacing: 12) {
-                        Label("\(Int(dayTotal.kcal.rounded())) 千卡", systemImage: "flame.fill")
-                            .foregroundColor(Theme.warning)
-                        Text("蛋白 \(Int(dayTotal.protein.rounded()))g")
-                        Text("脂肪 \(Int(dayTotal.fat.rounded()))g")
-                        Text("碳水 \(Int(dayTotal.carbs.rounded()))g")
-                        Spacer()
-                    }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-                    .transition(.opacity)
-                }
+                // 今日热量预算（没设目标时退回简单合计）
+                summaryBar
 
                 Divider()
 

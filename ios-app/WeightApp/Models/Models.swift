@@ -92,6 +92,21 @@ struct UserProfile: Codable, Equatable {
     var nickname: String
     var height_cm: Double?
     var target_kg: Double?
+    /// 每日热量目标（减脂期计划摄入），为空时按体重估算
+    var daily_kcal_target: Double?
+}
+
+/// 每日热量目标：优先用手动设置值，没设置时按当前体重粗算（kg × 26，取整到 10）
+extension UserProfile {
+    func kcalTarget(currentKg: Double?) -> Double? {
+        if let t = daily_kcal_target, t > 0 { return t }
+        guard let kg = currentKg, kg > 0 else { return nil }
+        return (kg * 26 / 10).rounded() * 10
+    }
+
+    var isKcalTargetCustom: Bool {
+        (daily_kcal_target ?? 0) > 0
+    }
 }
 
 /// 登录/注册返回

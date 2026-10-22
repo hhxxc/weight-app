@@ -140,6 +140,7 @@ struct ProfileEditView: View {
     @State private var nickname = ""
     @State private var heightText = ""
     @State private var targetText = ""
+    @State private var kcalText = ""
     @State private var isBusy = false
     @State private var error: String?
 
@@ -166,6 +167,20 @@ struct ProfileEditView: View {
             } footer: {
                 Text("填写身高后自动计算 BMI；填写目标体重后显示减重进度")
             }
+
+            Section {
+                HStack {
+                    Text("每日热量目标")
+                    TextField(suggestedKcalText, text: $kcalText)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                    Text("千卡")
+                        .foregroundColor(.secondary)
+                }
+            } footer: {
+                Text("留空则由系统按当前体重估算（体重 kg × 26），饮食页会显示「今天还能吃多少」。")
+            }
+
             if let error {
                 Section { Text(error).foregroundColor(.red) }
             }
@@ -181,7 +196,18 @@ struct ProfileEditView: View {
             nickname = state.user?.nickname ?? ""
             heightText = state.user?.height_cm.map { String(format: "%.0f", $0) } ?? ""
             targetText = state.user?.target_kg.map { String(format: "%.1f", $0) } ?? ""
+            if let k = state.user?.daily_kcal_target, k > 0 {
+                kcalText = String(format: "%.0f", k)
+            }
         }
+    }
+
+    /// 自动估算值的占位提示
+    private var suggestedKcalText: String {
+        guard let k = state.user?.kcalTarget(currentKg: state.sortedDesc.first?.kg) else {
+            return "自动"
+        }
+        return "建议 \(Int(k))"
     }
 
     private func save() {
@@ -189,25 +215,45 @@ struct ProfileEditView: View {
         let target = Double(targetText)
         if !heightText.isEmpty && (height == nil || height! < 50 || height! > 260) {
             error = "身高需在 50~260cm 之间"
+            Haptics.warning()
             return
         }
         if !targetText.isEmpty && (target == nil || target! < 10 || target! > 500) {
             error = "目标体重需在 10~500kg 之间"
+            Haptics.warning()
             return
         }
+        let trimmedKcal = kcalText.trimmingCharacters(in: .whitespaces)
+        var kcalTarget: Double?
+        if !trimmedKcal.isEmpty {
+            guard let k = Double(trimmedKcal), k >= 500, k <= 10000 else {
+                error = "每日热量目标需在 500~10000 千卡之间"
+                Haptics.warning()
+                return
+            }
+            kcalTarget = k
+        }
+
         isBusy = true
+        error = nil
         Task {
-            defer { isBusy = false }
             do {
                 let u = try await APIClient.shared.updateMe(nickname: nickname,
                                                              heightCm: height,
-                                                             targetKg: target)
+                                                             targetKg: target,
+                                                             dailyKcalTarget: kcalTarget)
                 await MainActor.run {
+                    isBusy = false
+                    Haptics.success()
                     state.updateUser(u)
                     dismiss()
                 }
             } catch let err {
-                await MainActor.run { error = err.localizedDescription }
+                await MainActor.run {
+                    isBusy = false
+                    Haptics.error()
+                    error = err.localizedDescription
+                }
             }
         }
     }

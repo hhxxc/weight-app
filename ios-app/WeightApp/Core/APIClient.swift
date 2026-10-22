@@ -203,9 +203,17 @@ final class APIClient {
         return u
     }
 
-    struct UpdateMeBody: Encodable { let nickname: String; let height_cm: Double?; let target_kg: Double? }
-    func updateMe(nickname: String, heightCm: Double?, targetKg: Double?) async throws -> UserProfile {
-        let r: [String: UserProfile] = try await request("PUT", "/me", body: UpdateMeBody(nickname: nickname, height_cm: heightCm, target_kg: targetKg))
+    struct UpdateMeBody: Encodable {
+        let nickname: String
+        let height_cm: Double?
+        let target_kg: Double?
+        let daily_kcal_target: Double?
+    }
+    func updateMe(nickname: String, heightCm: Double?, targetKg: Double?,
+                  dailyKcalTarget: Double?) async throws -> UserProfile {
+        let r: [String: UserProfile] = try await request("PUT", "/me", body: UpdateMeBody(
+            nickname: nickname, height_cm: heightCm, target_kg: targetKg,
+            daily_kcal_target: dailyKcalTarget))
         guard let u = r["user"] else { throw APIError.decode }
         return u
     }

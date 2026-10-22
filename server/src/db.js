@@ -70,6 +70,8 @@ for (const [col, ddl] of [
 }
 // 迁移：users 表补 is_admin 列（管理员分配账号机制）
 ensureColumn('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');
+// 迁移：users 表补每日热量目标（减脂期每天计划摄入）
+ensureColumn('users', 'daily_kcal_target', 'REAL');
 
 export default db;
 export { DATA_DIR };
