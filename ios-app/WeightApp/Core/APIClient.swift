@@ -264,6 +264,25 @@ final class APIClient {
         return r.item
     }
 
+    // MARK: - 常吃食物
+
+    struct FrequentMeal: Decodable, Identifiable {
+        var id: String { content }
+        let content: String
+        let count: Int
+        let kcal: Double?
+        let protein_g: Double?
+        let fat_g: Double?
+        let carbs_g: Double?
+        let last_date: String
+    }
+
+    /// 最近 90 天吃得最多的食物（按内容聚合），用于一键再记
+    func fetchFrequentMeals(limit: Int = 20) async throws -> [FrequentMeal] {
+        let r: [String: [FrequentMeal]] = try await request("GET", "/meals/frequent?limit=\(limit)")
+        return r["items"] ?? []
+    }
+
     // MARK: - 食物识图 / 配料表 OCR / 图片上传
 
     struct FoodRecognition: Decodable {

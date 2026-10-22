@@ -24,6 +24,13 @@ enum Theme {
     // 卡片背景（浅灰白，带轻阴影）
     static let cardBackground = Color(UIColor.secondarySystemGroupedBackground)
 
+    /// AI 建议卡背景：浅色模式淡蓝，深色模式深蓝，保证文字对比度
+    static let adviceBackground = Color(UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 0.11, green: 0.14, blue: 0.22, alpha: 1.0)
+            : UIColor(red: 0.933, green: 0.949, blue: 1.0, alpha: 1.0)
+    })
+
     /// 统一的卡片容器样式：圆角 16 + 白底 + 轻阴影
     static func card<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         content()

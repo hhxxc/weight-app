@@ -204,8 +204,29 @@ route('POST', '/meals', async (req, res) => {
   json(res, 201, { item: row });
 }, true);
 
-route('DELETE', '/meals/:id', (req, res) => {
-  const info = db.prepare('DELETE FROM meals WHERE id=? AND user_id=?').run(+req.params.id, req.user.id);
+// 常吃食物：最近 N 天按内容聚合（一键再记用），次数多的排前面
+route('GET', '/meals/frequent', (req, res) => {
+  const days = Math.min(Math.max(parseInt(req.query.get('days') || '90', 10) || 90, 7), 365);
+  const limit = Math.min(Math.max(parseInt(req.query.get('limit') || '20', 10) || 20, 1), 50);
+  const since = new Date(Date.now() - days * 86400000 + 8 * 3600 * 1000).toISOString().slice(0, 10);
+  const rows = db.prepare(`
+    SELECT content,
+           COUNT(*)                     AS count,
+           ROUND(AVG(kcal))             AS kcal,
+           ROUND(AVG(protein_g), 1)     AS protein_g,
+           ROUND(AVG(fat_g), 1)         AS fat_g,
+           ROUND(AVG(carbs_g), 1)       AS carbs_g,
+           MAX(date)                    AS last_date
+    FROM meals
+    WHERE user_id=? AND date>=? AND content<>''
+    GROUP BY content
+    ORDER BY count DESC, last_date DESC
+    LIMIT ?
+  `).all(req.user.id, since, limit);
+  json(res, 200, { items: rows });
+}, true);
+
+route('DELETE', '/meals/:id', (req, res) => {  const info = db.prepare('DELETE FROM meals WHERE id=? AND user_id=?').run(+req.params.id, req.user.id);
   if (info.changes === 0) return json(res, 404, { error: '记录不存在' });
   json(res, 200, { ok: true });
 }, true);
@@ -415,6 +436,34 @@ try {
 } catch (e) {
   console.error('[init] 提升管理员失败:', e.message);
 }
+
+// ---- 自动备份：每 12 小时把 SQLite 复制到 backups/，保留最近 7 份 ----
+// 用的是 better-sqlite3 的在线备份（WAL 下也安全），不需要停机。
+const BACKUP_DIR = join(DATA_DIR, 'backups');
+
+function runBackup() {
+  try {
+    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+    const day = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+    const dest = join(BACKUP_DIR, `weight-${day}.db`);
+    if (fs.existsSync(dest)) return;   // 当天已备份
+    db.backup(dest)
+      .then(() => {
+        const files = fs.readdirSync(BACKUP_DIR).filter((f) => f.endsWith('.db')).sort();
+        for (const f of files.slice(0, Math.max(0, files.length - 7))) {
+          fs.unlinkSync(join(BACKUP_DIR, f));
+        }
+        console.log(`[backup] 已备份 ${dest}`);
+      })
+      .catch((e) => console.error('[backup] 失败:', e.message));
+  } catch (e) {
+    console.error('[backup] 失败:', e.message);
+  }
+}
+
+// 启动 20 秒后跑一次，之后每 12 小时一次
+setTimeout(runBackup, 20000);
+setInterval(runBackup, 12 * 3600 * 1000);
 
 server.listen(PORT, () => {
   console.log(`✅ weight-server 已启动，监听 ${PORT}`);

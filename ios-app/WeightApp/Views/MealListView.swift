@@ -9,6 +9,7 @@ struct MealListView: View {
     @State private var showFoodRecognize = false
     @State private var showNutritionOCR = false
     @State private var showVoice = false
+    @State private var showFrequent = false
     @State private var editingMeal: MealRecord?
     @State private var viewingImage: URL?
     @State private var showViewer = false
@@ -166,6 +167,9 @@ struct MealListView: View {
             .sheet(isPresented: $showVoice) {
                 VoiceRecordView(dateStr: dateStr)
             }
+            .sheet(isPresented: $showFrequent) {
+                FrequentMealsView(dateStr: dateStr)
+            }
             .onChange(of: dateStr) { _ in
                 Task { await state.refreshMeals(date: dateStr) }
             }
@@ -205,10 +209,11 @@ struct MealListView: View {
             .background(Theme.brandGradient)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-            HStack(spacing: 12) {
-                secondaryButton("语音记录", icon: "mic.fill") { showVoice = true }
-                secondaryButton("手动记录", icon: "square.and.pencil") { showAdd = true }
-                secondaryButton("拍配料表", icon: "text.viewfinder") { showNutritionOCR = true }
+            HStack(spacing: 10) {
+                secondaryButton("常吃", icon: "clock.arrow.circlepath") { showFrequent = true }
+                secondaryButton("语音", icon: "mic.fill") { showVoice = true }
+                secondaryButton("手动", icon: "square.and.pencil") { showAdd = true }
+                secondaryButton("配料表", icon: "text.viewfinder") { showNutritionOCR = true }
             }
         }
         .padding(.horizontal, 16)
@@ -219,14 +224,13 @@ struct MealListView: View {
 
     private func secondaryButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                Text(title)
+            VStack(spacing: 4) {
+                Image(systemName: icon).font(.subheadline)
+                Text(title).font(.caption2)
             }
-            .font(.subheadline)
             .foregroundColor(Theme.brandDeep)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
+            .padding(.vertical, 9)
             .background(Theme.brandBlue.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
@@ -277,7 +281,7 @@ struct ImageViewer: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.black.opacity(0.05))
+            .background(Color(UIColor.systemBackground))
             .navigationTitle("食物照片")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -299,6 +303,7 @@ struct MealEditView: View {
 
     @State private var type = MealRecord.autoType()
     @State private var content = ""
+    @State private var kcalText = ""
     @State private var isBusy = false
     @State private var error: String?
 
@@ -318,6 +323,18 @@ struct MealEditView: View {
                     TextEditor(text: $content)
                         .frame(minHeight: 120)
                 }
+                Section {
+                    HStack {
+                        Text("卡路里")
+                        TextField("可留空", text: $kcalText)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                        Text("千卡")
+                            .foregroundColor(.secondary)
+                    }
+                } footer: {
+                    Text("AI 估算不准时可以在这里手改；留空表示不计入卡路里统计。")
+                }
                 if let error {
                     Section { Text(error).foregroundColor(.red) }
                 }
@@ -336,28 +353,51 @@ struct MealEditView: View {
                 if let m = meal {
                     type = m.type
                     content = m.content
+                    if let k = m.kcal, k > 0 {
+                        kcalText = String(format: "%.0f", k)
+                    }
                 }
             }
         }
     }
 
     private func save() {
+        let trimmedKcal = kcalText.trimmingCharacters(in: .whitespaces)
+        var kcalValue: Double?
+        if !trimmedKcal.isEmpty {
+            guard let k = Double(trimmedKcal), k >= 0, k <= 5000 else {
+                error = "卡路里请输入 0~5000 之间的数字"
+                Haptics.warning()
+                return
+            }
+            kcalValue = k
+        }
+
         isBusy = true
+        error = nil
         Task {
-            defer { isBusy = false }
             do {
                 if let m = meal {
                     _ = try await APIClient.shared.updateMeal(id: m.id, date: m.date, type: type,
-                                                              content: content, kcal: m.kcal,
+                                                              content: content, kcal: kcalValue,
                                                               protein_g: m.protein_g, fat_g: m.fat_g,
                                                               carbs_g: m.carbs_g, image_url: m.image_url)
                 } else {
-                    _ = try await APIClient.shared.saveMeal(date: dateStr, type: type, content: content)
+                    _ = try await APIClient.shared.saveMeal(date: dateStr, type: type,
+                                                            content: content, kcal: kcalValue)
                 }
                 await state.refreshMeals(date: meal?.date ?? dateStr)
-                await MainActor.run { dismiss() }
+                await MainActor.run {
+                    isBusy = false
+                    Haptics.success()
+                    dismiss()
+                }
             } catch let err {
-                await MainActor.run { error = err.localizedDescription }
+                await MainActor.run {
+                    isBusy = false
+                    Haptics.error()
+                    error = err.localizedDescription
+                }
             }
         }
     }

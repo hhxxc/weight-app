@@ -75,6 +75,21 @@ struct StatsView: View {
                 sectionHeader("体重", icon: "scalemass.fill")
             }
 
+            // 本周 vs 上周
+            Section {
+                let w = weekCompare(s)
+                HStack(spacing: 0) {
+                    statCell("本周体重", w.thisAvg.map { String(format: "%.1f", $0) } ?? "—")
+                    statCell("较上周", weightDeltaText(w), color: weightDeltaColor(w))
+                    statCell("日均摄入", w.thisKcal.map { "\(Int($0.rounded()))" } ?? "—")
+                }
+                Text(weekFootnote(w))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } header: {
+                sectionHeader("本周 vs 上周", icon: "calendar")
+            }
+
             // 卡路里模块
             Section {
                 HStack(spacing: 0) {
@@ -128,7 +143,7 @@ struct StatsView: View {
             } header: {
                 sectionHeader("AI 建议", icon: "sparkles")
             }
-            .listRowBackground(Color(hex: "EEF2FF"))
+            .listRowBackground(Theme.adviceBackground)
         }
         .listStyle(.insetGrouped)
     }
@@ -226,6 +241,76 @@ struct StatsView: View {
     private func trendColor(_ v: Double?) -> Color {
         guard let v = v, abs(v) >= 0.05 else { return .primary }
         return v < 0 ? Theme.success : Theme.warning
+    }
+
+    // MARK: - 本周 vs 上周
+
+    private struct WeekCompare {
+        let thisAvg: Double?
+        let lastAvg: Double?
+        let thisDays: Int
+        let lastDays: Int
+        let thisKcal: Double?
+        let lastKcal: Double?
+    }
+
+    private func weekCompare(_ s: APIClient.StatsResponse) -> WeekCompare {
+        let cal = Calendar.current
+        let today = Date()
+        func keys(_ from: Int, _ to: Int) -> Set<String> {
+            var set = Set<String>()
+            for i in from..<to {
+                if let d = cal.date(byAdding: .day, value: -i, to: today) {
+                    set.insert(WeightRecord.dateFormatter.string(from: d))
+                }
+            }
+            return set
+        }
+        let thisKeys = keys(0, 7)
+        let lastKeys = keys(7, 14)
+
+        let thisW = state.weights.filter { thisKeys.contains($0.date) }
+        let lastW = state.weights.filter { lastKeys.contains($0.date) }
+        let thisK = s.daily.filter { thisKeys.contains($0.date) && $0.kcal > 0 }
+        let lastK = s.daily.filter { lastKeys.contains($0.date) && $0.kcal > 0 }
+
+        func avgKg(_ list: [WeightRecord]) -> Double? {
+            list.isEmpty ? nil : list.reduce(0.0) { $0 + $1.kg } / Double(list.count)
+        }
+        func avgKcal(_ list: [APIClient.StatsResponse.DailyPoint]) -> Double? {
+            list.isEmpty ? nil : list.reduce(0.0) { $0 + $1.kcal } / Double(list.count)
+        }
+
+        return WeekCompare(thisAvg: avgKg(thisW), lastAvg: avgKg(lastW),
+                           thisDays: thisW.count, lastDays: lastW.count,
+                           thisKcal: avgKcal(thisK), lastKcal: avgKcal(lastK))
+    }
+
+    private func weightDelta(_ w: WeekCompare) -> Double? {
+        guard let a = w.thisAvg, let b = w.lastAvg else { return nil }
+        return a - b
+    }
+
+    private func weightDeltaText(_ w: WeekCompare) -> String {
+        guard let d = weightDelta(w) else { return "—" }
+        return String(format: "%+.1f kg", d)
+    }
+
+    private func weightDeltaColor(_ w: WeekCompare) -> Color {
+        guard let d = weightDelta(w) else { return .primary }
+        if abs(d) < 0.05 { return .primary }
+        return d < 0 ? Theme.success : Theme.warning
+    }
+
+    private func weekFootnote(_ w: WeekCompare) -> String {
+        var text = "体重记录 本周 \(w.thisDays) 天 · 上周 \(w.lastDays) 天"
+        if let k = w.thisKcal, let p = w.lastKcal, p > 0 {
+            let delta = k - p
+            text += String(format: "；日均摄入 %+.0f 千卡", delta)
+        } else {
+            text += "；日均摄入仅统计有饮食记录的天"
+        }
+        return text
     }
 
     private func macroBar(_ name: String, _ v: Double, _ color: Color) -> some View {
