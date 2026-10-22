@@ -53,17 +53,20 @@ mkdir -p "$STATE_DIR"
 RUNNING=$(docker ps --filter name="$CONTAINER_NAME" --format '{{.Names}}' 2>/dev/null)
 
 # ---------- 通道一：只同步源码（秒级） ----------
-SRC_TAG=$(curl -sI -L -m 60 "$SRC_URL" 2>/dev/null | grep -iE '^(etag|content-length):' | tr '\n' ' ' | tr -d '\r')
+# 源码包只有 ~12KB，直接下载后用 md5 判断是否变化（比 HEAD 的 ETag 可靠：
+# GitHub 对刚上传的资产 HEAD 有时只返回 content-length: 0，标记会退化）。
+TMP_SRC="/tmp/weight-src.tar.gz"
 SRC_LAST=""
 [ -f "$SRC_ETAG_FILE" ] && SRC_LAST=$(cat "$SRC_ETAG_FILE" 2>/dev/null || echo "")
 
-if [ -n "$SRC_TAG" ] && [ "$SRC_TAG" != "$SRC_LAST" ] && [ -n "$RUNNING" ]; then
-    log "发现源码更新：$SRC_TAG（旧：${SRC_LAST:-无}），尝试快速部署"
-    TMP_SRC="/tmp/weight-src.tar.gz"
-    if curl -sL -m 180 -o "$TMP_SRC" "$SRC_URL" >> "$LOG" 2>&1 && gzip -t "$TMP_SRC" 2>/dev/null; then
-        rm -rf /tmp/weight-src
-        mkdir -p /tmp/weight-src
-        if tar -xzf "$TMP_SRC" -C /tmp/weight-src 2>/dev/null; then
+if curl -sL -m 180 -o "$TMP_SRC" "$SRC_URL" 2>/dev/null && gzip -t "$TMP_SRC" 2>/dev/null; then
+    rm -rf /tmp/weight-src
+    mkdir -p /tmp/weight-src
+    if tar -xzf "$TMP_SRC" -C /tmp/weight-src 2>/dev/null; then
+        # 用「文件内容哈希」而不是 tar 的 md5：tar 带 mtime，纯 iOS 提交也会变
+        SRC_TAG=$(cd /tmp/weight-src && find src -type f | sort | xargs md5sum 2>/dev/null | md5sum | cut -d' ' -f1)
+        if [ -n "$SRC_TAG" ] && [ "$SRC_TAG" != "$SRC_LAST" ] && [ -n "$RUNNING" ]; then
+            log "发现源码更新：$SRC_TAG（旧：${SRC_LAST:-无}），尝试快速部署"
             LOCAL_PKG=$(md5sum /tmp/weight-src/package.json 2>/dev/null | cut -d' ' -f1)
             REMOTE_PKG=$(docker exec "$CONTAINER_NAME" md5sum /app/package.json 2>/dev/null | cut -d' ' -f1)
             if [ -n "$LOCAL_PKG" ] && [ "$LOCAL_PKG" = "$REMOTE_PKG" ]; then
@@ -93,11 +96,9 @@ if [ -n "$SRC_TAG" ] && [ "$SRC_TAG" != "$SRC_LAST" ] && [ -n "$RUNNING" ]; then
                 log "依赖有变化（package.json 不一致），回退镜像通道"
             fi
         fi
-    else
-        log "WARN: 源码包下载/校验失败，回退镜像通道"
     fi
-    rm -f "$TMP_SRC"
     rm -rf /tmp/weight-src
+    rm -f "$TMP_SRC"
 fi
 
 # ---------- 通道二：整镜像部署（依赖变化 / 首次 / 容器丢失） ----------
