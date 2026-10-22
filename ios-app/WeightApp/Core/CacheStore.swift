@@ -34,7 +34,7 @@ enum CacheStore {
 
     /// 退出登录时清空全部缓存，避免换账号看到上一个人的数据
     static func clearAll() {
-        for name in ["weights", "user", "pendingWeights", "stats"] { remove(name) }
+        for name in ["weights", "user", "pendingWeights", "pendingMeals", "stats"] { remove(name) }
         // 饮食按日期分文件缓存（meals-YYYY-MM-DD.json）
         if let files = try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) {
             for f in files where f.lastPathComponent.hasPrefix("meals-") {
@@ -63,6 +63,44 @@ enum PendingSync {
         // 同一天只保留最新一条（后端也是按天覆盖语义）
         var list = all().filter { $0.date != date }
         list.append(PendingWeight(id: UUID().uuidString, date: date, kg: kg, note: note))
+        CacheStore.save(list, name)
+    }
+
+    static func remove(id: String) {
+        CacheStore.save(all().filter { $0.id != id }, name)
+    }
+
+    static func count() -> Int { all().count }
+
+    static func clear() { CacheStore.remove(name) }
+}
+
+/// 离线待同步的饮食记录（手动记录 / 常吃一键记）
+struct PendingMeal: Codable, Identifiable {
+    var id: String
+    var date: String
+    var type: String
+    var content: String
+    var kcal: Double?
+    var protein_g: Double?
+    var fat_g: Double?
+    var carbs_g: Double?
+    var image_url: String?
+}
+
+enum PendingMealSync {
+    private static let name = "pendingMeals"
+
+    static func all() -> [PendingMeal] {
+        CacheStore.load([PendingMeal].self, name) ?? []
+    }
+
+    static func add(date: String, type: String, content: String, kcal: Double?,
+                    protein_g: Double?, fat_g: Double?, carbs_g: Double?, image_url: String?) {
+        var list = all()
+        list.append(PendingMeal(id: UUID().uuidString, date: date, type: type, content: content,
+                                kcal: kcal, protein_g: protein_g, fat_g: fat_g,
+                                carbs_g: carbs_g, image_url: image_url))
         CacheStore.save(list, name)
     }
 

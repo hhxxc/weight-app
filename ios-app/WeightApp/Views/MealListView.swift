@@ -417,27 +417,44 @@ struct MealEditView: View {
         isBusy = true
         error = nil
         Task {
-            do {
-                if let m = meal {
+            if let m = meal {
+                do {
                     _ = try await APIClient.shared.updateMeal(id: m.id, date: m.date, type: type,
                                                               content: content, kcal: kcalValue,
                                                               protein_g: m.protein_g, fat_g: m.fat_g,
                                                               carbs_g: m.carbs_g, image_url: m.image_url)
-                } else {
-                    _ = try await APIClient.shared.saveMeal(date: dateStr, type: type,
-                                                            content: content, kcal: kcalValue)
+                    await state.refreshMeals(date: m.date)
+                    await MainActor.run {
+                        isBusy = false
+                        Haptics.success()
+                        dismiss()
+                    }
+                } catch let err {
+                    await MainActor.run {
+                        isBusy = false
+                        Haptics.error()
+                        error = err.localizedDescription
+                    }
                 }
-                await state.refreshMeals(date: meal?.date ?? dateStr)
+            } else {
+                // 新增：断网自动进离线队列，不丢记录
+                let outcome = await state.saveMealResilient(date: dateStr, type: type, content: content,
+                                                            kcal: kcalValue, protein_g: nil, fat_g: nil,
+                                                            carbs_g: nil, image_url: nil)
                 await MainActor.run {
                     isBusy = false
-                    Haptics.success()
-                    dismiss()
-                }
-            } catch let err {
-                await MainActor.run {
-                    isBusy = false
-                    Haptics.error()
-                    error = err.localizedDescription
+                    switch outcome {
+                    case .synced:
+                        Haptics.success()
+                        dismiss()
+                    case .queued:
+                        Haptics.success()
+                        state.showToast("已存本地，联网后自动同步")
+                        dismiss()
+                    case .failed(let msg):
+                        Haptics.error()
+                        error = msg
+                    }
                 }
             }
         }

@@ -62,6 +62,25 @@ function requireAdmin(req, res) {
   return true;
 }
 
+// ---- 登录失败限流（内存计数，进程重启清零）----
+const LOGIN_MAX_FAILS = 6;
+const LOGIN_WINDOW_MS = 5 * 60 * 1000;
+const LOGIN_BLOCK_MS = 3 * 60 * 1000;
+const loginFails = new Map();   // key -> { count, first, blockedUntil }
+
+function loginKey(req, username) {
+  const fwd = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  const ip = fwd || (req.socket && req.socket.remoteAddress) || '-';
+  return ip + '|' + String(username || '').slice(0, 32);
+}
+
+function pruneLoginFails(now) {
+  if (loginFails.size < 200) return;
+  for (const [k, v] of loginFails) {
+    if (v.blockedUntil < now && now - v.first > LOGIN_WINDOW_MS) loginFails.delete(k);
+  }
+}
+
 // 从请求里取鉴权后的用户；无效 token 返回 null
 function authUser(req) {
   const h = req.headers['authorization'] || '';
@@ -132,10 +151,30 @@ route('POST', '/auth/register', async (req, res) => {
 route('POST', '/auth/login', async (req, res) => {
   const { username, password } = await readBody(req);
   if (!username || !password) return json(res, 400, { error: '请输入用户名和密码' });
+
+  // 失败限流：公网暴露下防止撞库。同 IP+用户名 5 分钟内失败 5 次 → 锁 5 分钟。
+  const key = loginKey(req, username);
+  const now = Date.now();
+  pruneLoginFails(now);
+  const rec = loginFails.get(key);
+  if (rec && rec.blockedUntil > now) {
+    const mins = Math.max(1, Math.ceil((rec.blockedUntil - now) / 60000));
+    return json(res, 429, { error: `尝试过于频繁，请 ${mins} 分钟后再试` });
+  }
+
   const u = db.prepare('SELECT * FROM users WHERE username = ?').get(String(username).trim());
   if (!u || !bcrypt.compareSync(String(password), u.password)) {
+    const r = rec && now - rec.first < LOGIN_WINDOW_MS ? rec : { count: 0, first: now, blockedUntil: 0 };
+    r.count += 1;
+    if (r.count >= LOGIN_MAX_FAILS) r.blockedUntil = now + LOGIN_BLOCK_MS;
+    loginFails.set(key, r);
+    if (r.blockedUntil > now) {
+      return json(res, 429, { error: `失败次数过多，请 ${Math.ceil(LOGIN_BLOCK_MS / 60000)} 分钟后再试` });
+    }
     return json(res, 401, { error: '用户名或密码错误' });
   }
+
+  loginFails.delete(key);
   json(res, 200, { token: sign(u), user: publicUser(u) });
 });
 

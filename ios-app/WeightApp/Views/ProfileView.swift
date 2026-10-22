@@ -96,6 +96,11 @@ struct ProfileView: View {
                     } label: {
                         Label("软件更新", systemImage: "arrow.down.circle")
                     }
+                    NavigationLink {
+                        LogView()
+                    } label: {
+                        Label("运行日志", systemImage: "doc.text.magnifyingglass")
+                    }
                     Label("体重记录 v\(UpdateChecker.currentAppVersion)", systemImage: "info.circle")
                         .foregroundColor(.secondary)
                 }

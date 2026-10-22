@@ -105,6 +105,7 @@ final class AppState: ObservableObject {
         mealCacheOrder.removeAll()
         mealRequestDate = nil
         PendingSync.clear()
+        PendingMealSync.clear()
         CacheStore.clearAll()
         AppLogger.shared.log("退出登录")
     }
@@ -120,6 +121,7 @@ final class AppState: ObservableObject {
         mealCache.removeAll()
         mealCacheOrder.removeAll()
         mealRequestDate = nil
+        PendingMealSync.clear()
         CacheStore.clearAll()
         AppLogger.shared.log("token 失效，强制登出")
     }
@@ -154,7 +156,7 @@ final class AppState: ObservableObject {
             errorMessage = nil
             cacheSnapshot()
             AppLogger.shared.log("启动加载：\(w.count) 条体重记录")
-            await flushPendingWeights()
+            await flushPending()
         } catch APIError.unauthorized {
             forceLogout()
         } catch {
@@ -260,28 +262,80 @@ final class AppState: ObservableObject {
         }
     }
 
-    /// 把离线期间的记录补传到服务器（失败则保留，下次启动再试）
+    /// 把离线期间的记录（体重 + 饮食）补传到服务器，失败则保留，下次启动/回前台再试
     @MainActor
-    func flushPendingWeights() async {
+    func flushPending() async {
         guard !isSyncingPending else { return }
-        let items = PendingSync.all()
-        guard !items.isEmpty else { return }
+        let weightItems = PendingSync.all()
+        let mealItems = PendingMealSync.all()
+        guard !weightItems.isEmpty || !mealItems.isEmpty else { return }
         isSyncingPending = true
         defer { isSyncingPending = false }
 
-        var uploaded = 0
-        for item in items {
+        var wUploaded = 0
+        for item in weightItems {
             do {
                 _ = try await APIClient.shared.saveWeight(date: item.date, kg: item.kg, note: item.note)
                 PendingSync.remove(id: item.id)
-                uploaded += 1
+                wUploaded += 1
             } catch {
                 break   // 网络仍不通，保留队列下次再试
             }
         }
-        if uploaded > 0 {
-            await refreshWeights()
-            showToast("已同步 \(uploaded) 条离线记录")
+
+        var mUploaded = 0
+        for item in mealItems {
+            do {
+                _ = try await APIClient.shared.saveMeal(date: item.date, type: item.type,
+                                                        content: item.content, kcal: item.kcal,
+                                                        protein_g: item.protein_g, fat_g: item.fat_g,
+                                                        carbs_g: item.carbs_g, image_url: item.image_url)
+                PendingMealSync.remove(id: item.id)
+                mUploaded += 1
+            } catch {
+                break
+            }
+        }
+
+        if wUploaded > 0 { await refreshWeights() }
+        if mUploaded > 0, let d = mealsDate { await refreshMeals(date: d) }
+        if wUploaded + mUploaded > 0 {
+            showToast("已同步 \(wUploaded + mUploaded) 条离线记录")
+        }
+    }
+
+    // MARK: - 饮食保存（离线兜底）
+
+    enum MealSaveOutcome {
+        case synced
+        case queued
+        case failed(String)
+    }
+
+    /// 保存一条饮食记录：成功即刷新；网络失败转入离线队列（不丢记录）
+    @MainActor
+    func saveMealResilient(date: String, type: String, content: String,
+                           kcal: Double?, protein_g: Double?, fat_g: Double?,
+                           carbs_g: Double?, image_url: String?) async -> MealSaveOutcome {
+        do {
+            _ = try await APIClient.shared.saveMeal(date: date, type: type, content: content,
+                                                    kcal: kcal, protein_g: protein_g, fat_g: fat_g,
+                                                    carbs_g: carbs_g, image_url: image_url)
+            await refreshMeals(date: date)
+            return .synced
+        } catch APIError.unauthorized {
+            forceLogout()
+            return .failed("登录已过期，请重新登录")
+        } catch APIError.noToken {
+            return .failed("未登录")
+        } catch APIError.server(let msg) {
+            return .failed(msg)
+        } catch {
+            PendingMealSync.add(date: date, type: type, content: content, kcal: kcal,
+                                protein_g: protein_g, fat_g: fat_g, carbs_g: carbs_g,
+                                image_url: image_url)
+            AppLogger.shared.log("饮食保存失败，已入离线队列：\(content)")
+            return .queued
         }
     }
 

@@ -127,26 +127,28 @@ struct FrequentMealsView: View {
         savingContent = item.content
         Haptics.tap()
         Task {
-            do {
-                _ = try await APIClient.shared.saveMeal(date: dateStr,
+            let outcome = await state.saveMealResilient(date: dateStr,
                                                        type: MealRecord.autoType(),
                                                        content: item.content,
                                                        kcal: item.kcal,
                                                        protein_g: item.protein_g,
                                                        fat_g: item.fat_g,
-                                                       carbs_g: item.carbs_g)
-                await state.refreshMeals(date: dateStr)
-                await MainActor.run {
+                                                       carbs_g: item.carbs_g,
+                                                       image_url: nil)
+            await MainActor.run {
+                savingContent = nil
+                switch outcome {
+                case .synced:
                     Haptics.success()
-                    savingContent = nil
                     state.showToast("已记录：\(item.content)")
                     dismiss()
-                }
-            } catch let err {
-                await MainActor.run {
+                case .queued:
+                    Haptics.success()
+                    state.showToast("已存本地，联网后自动同步")
+                    dismiss()
+                case .failed(let msg):
                     Haptics.error()
-                    savingContent = nil
-                    state.showToast("记录失败：\(err.localizedDescription)")
+                    state.showToast("记录失败：\(msg)")
                 }
             }
         }
