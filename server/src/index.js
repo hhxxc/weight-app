@@ -285,11 +285,31 @@ route('POST', '/meals', async (req, res) => {
   const num = (v) => (v === null || v === undefined || v === '' ? null : +v);
   const kcal = num(b.kcal), protein_g = num(b.protein_g), fat_g = num(b.fat_g), carbs_g = num(b.carbs_g);
   const image_url = String(b.image_url || '').slice(0, 500) || null;
-  const info = db.prepare(`INSERT INTO meals (user_id,date,type,content,kcal,protein_g,fat_g,carbs_g,image_url,created_at)
-                          VALUES (?,?,?,?,?,?,?,?,?,?)`)
-    .run(req.user.id, date, type, content.slice(0, 500), kcal, protein_g, fat_g, carbs_g, image_url, Date.now());
-  const row = db.prepare('SELECT id,date,type,content,kcal,protein_g,fat_g,carbs_g,image_url FROM meals WHERE id=?')
-    .get(info.lastInsertRowid);
+  // 幂等键：客户端重试 / 离线补传复用同一个 id，避免写入两条一样的记录
+  const clientId = String(b.client_id || '').slice(0, 64) || null;
+  const COLS = 'id,date,type,content,kcal,protein_g,fat_g,carbs_g,image_url';
+
+  if (clientId) {
+    const dup = db.prepare(`SELECT ${COLS} FROM meals WHERE user_id=? AND client_id=?`)
+      .get(req.user.id, clientId);
+    if (dup) return json(res, 200, { item: dup, duplicated: true });
+  }
+
+  let info;
+  try {
+    info = db.prepare(`INSERT INTO meals (user_id,date,type,content,kcal,protein_g,fat_g,carbs_g,image_url,client_id,created_at)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(req.user.id, date, type, content.slice(0, 500), kcal, protein_g, fat_g, carbs_g, image_url, clientId, Date.now());
+  } catch (e) {
+    // 并发下唯一索引兜底
+    if (clientId && /UNIQUE/i.test(String(e.message))) {
+      const dup = db.prepare(`SELECT ${COLS} FROM meals WHERE user_id=? AND client_id=?`)
+        .get(req.user.id, clientId);
+      if (dup) return json(res, 200, { item: dup, duplicated: true });
+    }
+    throw e;
+  }
+  const row = db.prepare(`SELECT ${COLS} FROM meals WHERE id=?`).get(info.lastInsertRowid);
   json(res, 201, { item: row });
 }, true);
 

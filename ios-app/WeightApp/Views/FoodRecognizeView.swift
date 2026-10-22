@@ -110,6 +110,14 @@ struct FoodRecognizeView: View {
                 Text(r.food.isEmpty ? "未识别出食物" : r.food)
                     .font(.title3.bold())
 
+                if r.converted_from_kj == true {
+                    Text("营养成分表单位是千焦(kJ)，已自动 ÷4.184 换算为千卡")
+                        .font(.caption2)
+                        .foregroundColor(Theme.warning)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
+                }
+
                 HStack {
                     Text("克数")
                     Spacer()
@@ -197,6 +205,7 @@ struct FoodRecognizeView: View {
         Task {
             defer { saving = false }
             do {
+                let clientId = UUID().uuidString
                 var imageURL: String? = nil
                 if let img = pickedImage, let b64 = ImageUtil.jpegBase64(img, maxDimension: 800, quality: 0.6) {
                     imageURL = try await APIClient.shared.uploadImage(imageBase64: b64, ext: "jpg")
@@ -205,7 +214,7 @@ struct FoodRecognizeView: View {
                 _ = try await APIClient.shared.saveMeal(
                     date: dateStr, type: type, content: content,
                     kcal: scaledKcal, protein_g: scaledProtein, fat_g: scaledFat, carbs_g: scaledCarbs,
-                    image_url: imageURL)
+                    image_url: imageURL, clientId: clientId)
                 await state.refreshMeals(date: dateStr)
                 await MainActor.run { dismiss() }
             } catch let err {

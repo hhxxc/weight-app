@@ -173,8 +173,15 @@ enum UpdateChecker {
 
     /// 下载 IPA：逐个尝试候选源，任一个成功即返回落盘 URL
     static func download(ipaURL: URL, version: String) async throws -> URL {
-        let candidates = downloadCandidates(ipaURL: ipaURL, version: version)
         let dest = UpdateFileStore.destinationURL(version: version)
+
+        // 这个版本已经下过（点了「稍后」）就不再重复下载，直接用本地包
+        if isUsableIPA(dest) {
+            AppLogger.shared.log("IPA 已存在，跳过下载：\(dest.lastPathComponent)")
+            return dest
+        }
+
+        let candidates = downloadCandidates(ipaURL: ipaURL, version: version)
         var lastError: Error?
 
         for url in candidates {
@@ -197,6 +204,17 @@ enum UpdateChecker {
         }
         throw lastError ?? NSError(domain: "update", code: 2,
                                    userInfo: [NSLocalizedDescriptionKey: "所有下载源均失败"])
+    }
+
+    /// 本地文件是否是完整的 IPA（zip 头 PK + 体积合理）
+    private static func isUsableIPA(_ url: URL) -> Bool {
+        let fm = FileManager.default
+        guard let attrs = try? fm.attributesOfItem(atPath: url.path),
+              let size = (attrs[.size] as? NSNumber)?.intValue, size > 1024 else { return false }
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? handle.close() }
+        let head = (try? handle.read(upToCount: 2)) ?? Data()
+        return head.count == 2 && head[0] == 0x50 && head[1] == 0x4B
     }
 
     // MARK: - 版本号工具

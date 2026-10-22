@@ -202,7 +202,7 @@ struct NutritionOCRView: View {
                 _ = try await APIClient.shared.saveMeal(
                     date: dateStr, type: type, content: content,
                     kcal: scaledKcal, protein_g: scaledProtein, fat_g: scaledFat, carbs_g: scaledCarbs,
-                    image_url: imageURL)
+                    image_url: imageURL, clientId: clientId)
                 await state.refreshMeals(date: dateStr)
                 await MainActor.run { dismiss() }
             } catch let err {

@@ -52,12 +52,14 @@ CREATE INDEX IF NOT EXISTS idx_weights_user_date ON weights(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_meals_user_date ON meals(user_id, date);
 `);
 
-// 迁移：老库 meals 表补营养/图片字段（列已存在时跳过）
+// 迁移：meals 表补营养/图片字段（列已存在时跳过）
 function ensureColumn(table, column, ddl) {
   const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
   if (!cols.includes(column)) {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+    return true;
   }
+  return false;
 }
 for (const [col, ddl] of [
   ['kcal', 'REAL'],
@@ -65,9 +67,13 @@ for (const [col, ddl] of [
   ['fat_g', 'REAL'],
   ['carbs_g', 'REAL'],
   ['image_url', 'TEXT'],
+  ['client_id', 'TEXT'],   // 客户端生成的幂等键：网络重试/离线补传不会产生重复记录
 ]) {
   ensureColumn('meals', col, ddl);
 }
+
+// 幂等键唯一（SQLite 允许多个 NULL，所以老数据不受影响）
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_meals_client ON meals(user_id, client_id)');
 // 迁移：users 表补 is_admin 列（管理员分配账号机制）
 ensureColumn('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');
 // 迁移：users 表补每日热量目标（减脂期每天计划摄入）

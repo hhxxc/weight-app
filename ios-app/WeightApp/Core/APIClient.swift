@@ -249,13 +249,16 @@ final class APIClient {
     struct MealBody: Encodable {
         let date: String; let type: String; let content: String
         let kcal: Double?; let protein_g: Double?; let fat_g: Double?; let carbs_g: Double?; let image_url: String?
+        var client_id: String? = nil
     }
     func saveMeal(date: String, type: String, content: String,
                   kcal: Double? = nil, protein_g: Double? = nil, fat_g: Double? = nil,
-                  carbs_g: Double? = nil, image_url: String? = nil) async throws -> MealRecord {
+                  carbs_g: Double? = nil, image_url: String? = nil,
+                  clientId: String? = nil) async throws -> MealRecord {
         let r: MealItemResponse = try await request("POST", "/meals", body: MealBody(
             date: date, type: type, content: content,
-            kcal: kcal, protein_g: protein_g, fat_g: fat_g, carbs_g: carbs_g, image_url: image_url))
+            kcal: kcal, protein_g: protein_g, fat_g: fat_g, carbs_g: carbs_g, image_url: image_url,
+            client_id: clientId))
         return r.item
     }
 
@@ -341,6 +344,8 @@ final class APIClient {
     struct FoodRecognition: Decodable {
         let food: String; let weight_g: Double
         let kcal: Double; let protein_g: Double; let fat_g: Double; let carbs_g: Double
+        /// 服务端发现模型把千焦当千卡时自动换算并置 true
+        var converted_from_kj: Bool?
     }
     struct NutritionInfo: Decodable {
         let name: String; let energy_kj: Double; let energy_kcal: Double

@@ -334,7 +334,8 @@ final class AppState: ObservableObject {
                 _ = try await APIClient.shared.saveMeal(date: item.date, type: item.type,
                                                         content: item.content, kcal: item.kcal,
                                                         protein_g: item.protein_g, fat_g: item.fat_g,
-                                                        carbs_g: item.carbs_g, image_url: item.image_url)
+                                                        carbs_g: item.carbs_g, image_url: item.image_url,
+                                                        clientId: item.client_id)
                 PendingMealSync.remove(id: item.id)
                 mUploaded += 1
             } catch {
@@ -358,14 +359,17 @@ final class AppState: ObservableObject {
     }
 
     /// 保存一条饮食记录：成功即刷新；网络失败转入离线队列（不丢记录）
+    /// clientId 保证「接口重试 + 离线补传」都不会产生重复记录
     @MainActor
     func saveMealResilient(date: String, type: String, content: String,
                            kcal: Double?, protein_g: Double?, fat_g: Double?,
                            carbs_g: Double?, image_url: String?) async -> MealSaveOutcome {
+        let clientId = UUID().uuidString
         do {
             _ = try await APIClient.shared.saveMeal(date: date, type: type, content: content,
                                                     kcal: kcal, protein_g: protein_g, fat_g: fat_g,
-                                                    carbs_g: carbs_g, image_url: image_url)
+                                                    carbs_g: carbs_g, image_url: image_url,
+                                                    clientId: clientId)
             await refreshMeals(date: date)
             return .synced
         } catch APIError.unauthorized {
@@ -378,7 +382,7 @@ final class AppState: ObservableObject {
         } catch {
             PendingMealSync.add(date: date, type: type, content: content, kcal: kcal,
                                 protein_g: protein_g, fat_g: fat_g, carbs_g: carbs_g,
-                                image_url: image_url)
+                                image_url: image_url, clientId: clientId)
             AppLogger.shared.log("饮食保存失败，已入离线队列：\(content)")
             return .queued
         }

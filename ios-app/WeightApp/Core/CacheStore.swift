@@ -86,6 +86,8 @@ struct PendingMeal: Codable, Identifiable {
     var fat_g: Double?
     var carbs_g: Double?
     var image_url: String?
+    /// 幂等键：补传时复用，服务端不会重复插入
+    var client_id: String?
 }
 
 enum PendingMealSync {
@@ -96,11 +98,12 @@ enum PendingMealSync {
     }
 
     static func add(date: String, type: String, content: String, kcal: Double?,
-                    protein_g: Double?, fat_g: Double?, carbs_g: Double?, image_url: String?) {
+                    protein_g: Double?, fat_g: Double?, carbs_g: Double?, image_url: String?,
+                    clientId: String?) {
         var list = all()
         list.append(PendingMeal(id: UUID().uuidString, date: date, type: type, content: content,
                                 kcal: kcal, protein_g: protein_g, fat_g: fat_g,
-                                carbs_g: carbs_g, image_url: image_url))
+                                carbs_g: carbs_g, image_url: image_url, client_id: clientId))
         CacheStore.save(list, name)
     }
 

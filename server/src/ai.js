@@ -68,22 +68,60 @@ function extractJSON(text) {
 // 食物识图：识别食物名 + 估算克数 + 卡路里 + 营养
 export async function recognizeFood(imageBase64) {
   const prompt = [
-    '这是一张食物照片。识别里面的食物名称、估算大概克数，并给出卡路里(千卡)、蛋白质(g)、脂肪(g)、碳水(g)。',
+    '这是一张食物或食品包装的照片。请完成三件事：',
+    '1) 识别食物名称（包装食品尽量写成「品牌 + 品名」）；',
+    '2) 估算这次实际吃的克数（包装食品按净含量或一份的量）；',
+    '3) 给出这份食物的能量与蛋白质、脂肪、碳水。',
+    '',
+    '能量单位必须严格遵守：',
+    '- 中国/欧盟营养标签上的能量常常是「千焦 kJ」，1 千卡 kcal = 4.184 千焦。',
+    '- 看到的是 kJ 时，必须先除以 4.184 换算成 kcal 再填到 kcal 字段，',
+    '  绝对不允许把千焦的数字直接当作千卡（那会高估 4 倍以上）。',
+    '- 标签一般是「每 100 克」，要按实际克数折算：kcal = 每100g kcal × 克数 ÷ 100。',
+    '- 任何食物能量密度都在 0~900 kcal/100g 之间；若算出的值超过这个范围，',
+    '  说明单位换算错了，请重新计算后再输出。',
+    '',
     '只输出 JSON，不要任何多余文字，格式：{"food":"","weight_g":0,"kcal":0,"protein_g":0,"fat_g":0,"carbs_g":0}',
   ].join('\n');
   const raw = await chat(FOOD_MODEL, prompt, imageBase64);
   const j = extractJSON(raw);
   if (!j) {
     // 模型没按 JSON 返回：兜底返回完整结构，避免客户端解码失败
-    return { food: String(raw || '').trim().slice(0, 100), weight_g: 0, kcal: 0, protein_g: 0, fat_g: 0, carbs_g: 0 };
+    return { food: String(raw || '').trim().slice(0, 100), weight_g: 0, kcal: 0, protein_g: 0, fat_g: 0, carbs_g: 0, converted_from_kj: false };
   }
+
+  const round1 = (v) => Math.round((Number(v) || 0) * 10) / 10;
+  const weight = Number(j.weight_g) || 0;
+  let kcal = Number(j.kcal) || 0;
+  let converted = false;
+
+  // 服务端兜底：任何食物能量密度都不可能超过 9.2 kcal/g（纯油脂约 9）。
+  // 超了说明模型把营养标签上的「千焦」当成了「千卡」，这里换回来。
+  if (weight > 0) {
+    if (kcal / weight > 9.2) {
+      let k = kcal / 4.184;                 // 假设模型给的是这份食物的 kJ 总量
+      if (k / weight > 9.2) {
+        k = (k * weight) / 100;             // 仍不合理 → 原值其实是「每 100g」，按份量折算
+      }
+      console.log(`[ai] 识图能量单位疑似 kJ：${kcal} → ${Math.round(k)} kcal / ${weight} g`);
+      kcal = k;
+      converted = true;
+    }
+  } else if (kcal > 900) {
+    // 没有克数（多半是拍的营养成分表）：每 100g 不可能超过 900 kcal
+    kcal = kcal / 4.184;
+    converted = true;
+    console.log(`[ai] 识图能量单位疑似 kJ（无克数）：换算为 ${Math.round(kcal)} kcal/100g`);
+  }
+
   return {
     food: String(j.food || '').trim(),
-    weight_g: Number(j.weight_g) || 0,
-    kcal: Number(j.kcal) || 0,
-    protein_g: Number(j.protein_g) || 0,
-    fat_g: Number(j.fat_g) || 0,
-    carbs_g: Number(j.carbs_g) || 0,
+    weight_g: Math.round(weight),
+    kcal: Math.round(kcal),
+    protein_g: round1(j.protein_g),
+    fat_g: round1(j.fat_g),
+    carbs_g: round1(j.carbs_g),
+    converted_from_kj: converted,
   };
 }
 
@@ -98,10 +136,18 @@ export async function ocrNutrition(imageBase64) {
   if (!j) {
     return { name: String(raw || '').trim().slice(0, 100), energy_kj: 0, energy_kcal: 0, protein_g: 0, fat_g: 0, carbs_g: 0 };
   }
+  let kj = Number(j.energy_kj) || 0;
+  let kcal = Number(j.energy_kcal) || 0;
+  // 每 100g 不可能超过 900 kcal；超出说明模型把 kJ 填进了 kcal
+  if (kcal > 900) {
+    kcal = kj > 0 ? kj / 4.184 : kcal / 4.184;
+    if (kj <= 0) kj = Math.round(kcal * 4.184);
+    console.log(`[ai] 配料表能量单位疑似 kJ，已换算：${Math.round(kcal)} kcal/100g`);
+  }
   return {
     name: String(j.name || '').trim(),
-    energy_kj: Number(j.energy_kj) || 0,
-    energy_kcal: Number(j.energy_kcal) || 0,
+    energy_kj: Math.round(kj),
+    energy_kcal: Math.round(kcal),
     protein_g: Number(j.protein_g) || 0,
     fat_g: Number(j.fat_g) || 0,
     carbs_g: Number(j.carbs_g) || 0,

@@ -198,9 +198,11 @@ struct VoiceRecordView: View {
             defer { saving = false }
             do {
                 let e = estimation
+                let clientId = UUID().uuidString
                 _ = try await APIClient.shared.saveMeal(
                     date: dateStr, type: type, content: e?.food.isEmpty == false ? e!.food : t,
-                    kcal: e?.kcal, protein_g: e?.protein_g, fat_g: e?.fat_g, carbs_g: e?.carbs_g)
+                    kcal: e?.kcal, protein_g: e?.protein_g, fat_g: e?.fat_g, carbs_g: e?.carbs_g,
+                    clientId: clientId)
                 await state.refreshMeals(date: dateStr)
                 await MainActor.run { dismiss() }
             } catch let err {
