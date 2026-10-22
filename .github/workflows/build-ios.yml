@@ -68,18 +68,18 @@ jobs:
             LATEST="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' ios-app/WeightApp/Info.plist)"
           fi
           V="$(bump "$LATEST")"
-          if [ -z "$V" ]; then echo "版本号计算失败（LATEST=$LATEST）"; exit 1; fi
+          if [ -z "$V" ]; then echo "版本号计算失败（LATEST=${LATEST}）"; exit 1; fi
           # 守卫：算出的版本必须大于任何已有 tag，否则说明拉取失败（曾经因此静默跳过发版）
           MAXTAG="$(latest_from_git)"
           if [ -n "$MAXTAG" ]; then
             HIGHER="$(printf '%s\n%s\n' "$V" "$MAXTAG" | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)"
             if [ "$HIGHER" != "$V" ]; then
-              echo "版本号异常：V=$V 不大于已有 tag $MAXTAG（LATEST=$LATEST）"; exit 1
+              echo "版本号异常：V=${V} 不大于已有 tag ${MAXTAG}（LATEST=${LATEST}）"; exit 1
             fi
           fi
           echo "app_version=$V" >> "$GITHUB_OUTPUT"
           echo "IPA_NAME=weight-app.ipa" >> "$GITHUB_ENV"
-          echo "==> 版本 $V（基于 $LATEST），IPA 资产名 weight-app.ipa（固定）"
+          echo "==> 版本 ${V}（基于 ${LATEST}），IPA 资产名 weight-app.ipa（固定）"
 
       - name: Generate project.pbxproj
         working-directory: ios-app
@@ -172,7 +172,7 @@ jobs:
           gh release create "v$V" \
             "ios-app/${{ env.IPA_NAME }}" \
             --title "Weight App v$V" \
-            --notes "体重记录 App v$V。TrollStore 打开 weight-app.ipa 覆盖安装；后端镜像已推送 ghcr.io/hhxxc/weight-server。"
+            --notes "体重记录 App v${V}。TrollStore 打开 weight-app.ipa 覆盖安装；后端由 NAS 定时任务自动更新。"
 
   build-server:
     needs: build
