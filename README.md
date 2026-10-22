@@ -94,7 +94,7 @@ docker run -d --name weight-server --restart unless-stopped \
 
 App 登录页可填服务器地址（留空用 `AppConfig.swift` 里的默认值）。默认：
 
-- 主：`https://dsm920-ddsnto-weight.x.ddnsto.com`（公网穿透，需自行配置 ddnsto 映射到 NAS 18191 端口）
+- 主：`https://c2r2t8t4.x.ddnsto.com`（公网穿透，已映射到 NAS 18191 端口）
 - 备：`http://192.168.31.198:18191`（内网直连）
 
 主备自动互换：主地址连不上自动切备用，成功后记住。
