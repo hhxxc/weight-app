@@ -120,3 +120,26 @@ export async function generateAdvice(summaryText) {
   const raw = await chat(TEXT_MODEL, prompt, null);
   return raw.trim();
 }
+
+// 文字描述估卡路里：根据饮食描述（如"两个包子一碗粥"）估算总卡路里+营养
+export async function estimateFood(text) {
+  const prompt = [
+    '根据这段饮食描述，估算这一餐的总卡路里和营养成分。',
+    '描述可能包含食物名称和数量（如"两个包子一碗粥""一个汉堡一份薯条"）。',
+    '只输出 JSON，不要任何多余文字，格式：{"food":"","kcal":0,"protein_g":0,"fat_g":0,"carbs_g":0}',
+    '',
+    `描述：${text}`,
+  ].join('\n');
+  const raw = await chat(TEXT_MODEL, prompt, null);
+  const j = extractJSON(raw);
+  if (!j) {
+    return { food: String(text).trim().slice(0, 200), kcal: 0, protein_g: 0, fat_g: 0, carbs_g: 0 };
+  }
+  return {
+    food: String(j.food || text).trim(),
+    kcal: Number(j.kcal) || 0,
+    protein_g: Number(j.protein_g) || 0,
+    fat_g: Number(j.fat_g) || 0,
+    carbs_g: Number(j.carbs_g) || 0,
+  };
+}

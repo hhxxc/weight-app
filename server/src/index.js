@@ -6,7 +6,7 @@ import { join } from 'path';
 import bcrypt from 'bcryptjs';
 import db, { DATA_DIR } from './db.js';
 import { sign, verify } from './auth.js';
-import { recognizeFood, ocrNutrition, generateAdvice } from './ai.js';
+import { recognizeFood, ocrNutrition, generateAdvice, estimateFood } from './ai.js';
 import { computeStats } from './stats.js';
 
 const PORT = process.env.PORT || 3000;
@@ -257,6 +257,20 @@ route('POST', '/foods/ocr', async (req, res) => {
   } catch (e) {
     console.error('[ai] ocrNutrition 失败:', e.message);
     json(res, 502, { error: e.message || '识别失败' });
+  }
+}, true);
+
+// 文字描述估卡路里（语音记录 / 手动描述）
+route('POST', '/foods/estimate', async (req, res) => {
+  const b = await readBody(req);
+  const text = String(b.text || '').trim();
+  if (!text) return json(res, 400, { error: '请输入饮食描述' });
+  try {
+    const r = await estimateFood(text);
+    json(res, 200, r);
+  } catch (e) {
+    console.error('[ai] estimateFood 失败:', e.message);
+    json(res, 502, { error: e.message || '卡路里估算失败' });
   }
 }, true);
 

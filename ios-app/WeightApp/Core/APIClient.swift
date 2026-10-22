@@ -250,7 +250,12 @@ final class APIClient {
         let name: String; let energy_kj: Double; let energy_kcal: Double
         let protein_g: Double; let fat_g: Double; let carbs_g: Double
     }
+    struct FoodEstimation: Decodable {
+        let food: String
+        let kcal: Double; let protein_g: Double; let fat_g: Double; let carbs_g: Double
+    }
     struct ImageBody: Encodable { let image_base64: String; let ext: String }
+    struct TextBody: Encodable { let text: String }
 
     func recognizeFood(imageBase64: String) async throws -> FoodRecognition {
         try await request("POST", "/foods/recognize", body: ImageBody(image_base64: imageBase64, ext: "jpg"))
@@ -258,6 +263,11 @@ final class APIClient {
 
     func ocrNutrition(imageBase64: String) async throws -> NutritionInfo {
         try await request("POST", "/foods/ocr", body: ImageBody(image_base64: imageBase64, ext: "jpg"))
+    }
+
+    /// 文字描述估卡路里（语音记录 / 手动描述）
+    func estimateFood(text: String) async throws -> FoodEstimation {
+        try await request("POST", "/foods/estimate", body: TextBody(text: text))
     }
 
     func uploadImage(imageBase64: String, ext: String) async throws -> String {

@@ -8,6 +8,7 @@ struct MealListView: View {
     @State private var showAdd = false
     @State private var showFoodRecognize = false
     @State private var showNutritionOCR = false
+    @State private var showVoice = false
     @State private var editingMeal: MealRecord?
     @State private var viewingImage: URL?
     @State private var showViewer = false
@@ -125,6 +126,9 @@ struct MealListView: View {
             .sheet(isPresented: $showNutritionOCR) {
                 NutritionOCRView(dateStr: dateStr)
             }
+            .sheet(isPresented: $showVoice) {
+                VoiceRecordView(dateStr: dateStr)
+            }
             .onChange(of: dateStr) { _ in
                 Task { await state.refreshMeals(date: dateStr) }
             }
@@ -159,6 +163,7 @@ struct MealListView: View {
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
             HStack(spacing: 12) {
+                secondaryButton("语音记录", icon: "mic.fill") { showVoice = true }
                 secondaryButton("手动记录", icon: "square.and.pencil") { showAdd = true }
                 secondaryButton("拍配料表", icon: "text.viewfinder") { showNutritionOCR = true }
             }

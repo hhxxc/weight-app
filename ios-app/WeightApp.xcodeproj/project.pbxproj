@@ -14,6 +14,7 @@
 		3ceb13d339c8527eb71456b4 /* ColorHex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0e7af03167a05bbba2fcb644 /* ColorHex.swift */; };
 		e28017fbba4855a7972f4a44 /* ImageUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = f628b9d4a8fc592190109a5a /* ImageUtil.swift */; };
 		7f17715cecf55b9ca608ccfe /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = fce54b35702159f2b5c86c9f /* Keychain.swift */; };
+		4ba388da4e7758f9959f122c /* SpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4c195530c4655da0b48350ff /* SpeechRecognizer.swift */; };
 		b97da62edf2a503a849ff8ec /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89ebb6f696de513295b1a3a2 /* Theme.swift */; };
 		bf2dd696019f50e38fb98b0b /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 603f0bdadb9c50fa85e9db71 /* UpdateChecker.swift */; };
 		f39280a38b735eb8a82bc0d9 /* XLSXParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = e4b9a45bb3b95ddfac9d5572 /* XLSXParser.swift */; };
@@ -29,6 +30,7 @@
 		30a1693e872c5d6b862147d8 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7f04774a93df5c09849c164c /* StatsView.swift */; };
 		0b0ba687a0ba5f2bbf936e53 /* TrendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = bf29ff4061c75c60b9f7d342 /* TrendView.swift */; };
 		3ff636877a8e59c5b1a450e8 /* UpdateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = a5366fa99e8d55eca89c528b /* UpdateView.swift */; };
+		a24d38196e0d52629a124f71 /* VoiceRecordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41b3bdf5e06d5796b0ca10f4 /* VoiceRecordView.swift */; };
 		98ccf720fd9e5226b459418b /* WeightEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 542f92ffd9d65b25b7f50c5f /* WeightEditView.swift */; };
 		68f67074b0bc5979b07e7f63 /* WeightListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22e76a7a875e56789f502550 /* WeightListView.swift */; };
 		a415274568cf55a78c5a037d /* WeightApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ae55f9e60705eb08ec8e15f /* WeightApp.swift */; };
@@ -43,6 +45,7 @@
 		0e7af03167a05bbba2fcb644 /* ColorHex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/ColorHex.swift; sourceTree = "<group>"; };
 		f628b9d4a8fc592190109a5a /* ImageUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/ImageUtil.swift; sourceTree = "<group>"; };
 		fce54b35702159f2b5c86c9f /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Keychain.swift; sourceTree = "<group>"; };
+		4c195530c4655da0b48350ff /* SpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/SpeechRecognizer.swift; sourceTree = "<group>"; };
 		89ebb6f696de513295b1a3a2 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/Theme.swift; sourceTree = "<group>"; };
 		603f0bdadb9c50fa85e9db71 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/UpdateChecker.swift; sourceTree = "<group>"; };
 		e4b9a45bb3b95ddfac9d5572 /* XLSXParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/XLSXParser.swift; sourceTree = "<group>"; };
@@ -58,6 +61,7 @@
 		7f04774a93df5c09849c164c /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/StatsView.swift; sourceTree = "<group>"; };
 		bf29ff4061c75c60b9f7d342 /* TrendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/TrendView.swift; sourceTree = "<group>"; };
 		a5366fa99e8d55eca89c528b /* UpdateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/UpdateView.swift; sourceTree = "<group>"; };
+		41b3bdf5e06d5796b0ca10f4 /* VoiceRecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/VoiceRecordView.swift; sourceTree = "<group>"; };
 		542f92ffd9d65b25b7f50c5f /* WeightEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/WeightEditView.swift; sourceTree = "<group>"; };
 		22e76a7a875e56789f502550 /* WeightListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/WeightListView.swift; sourceTree = "<group>"; };
 		0ae55f9e60705eb08ec8e15f /* WeightApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightApp.swift; sourceTree = "<group>"; };
@@ -86,6 +90,7 @@
 				0e7af03167a05bbba2fcb644 /* ColorHex.swift */,
 				f628b9d4a8fc592190109a5a /* ImageUtil.swift */,
 				fce54b35702159f2b5c86c9f /* Keychain.swift */,
+				4c195530c4655da0b48350ff /* SpeechRecognizer.swift */,
 				89ebb6f696de513295b1a3a2 /* Theme.swift */,
 				603f0bdadb9c50fa85e9db71 /* UpdateChecker.swift */,
 				e4b9a45bb3b95ddfac9d5572 /* XLSXParser.swift */,
@@ -101,6 +106,7 @@
 				7f04774a93df5c09849c164c /* StatsView.swift */,
 				bf29ff4061c75c60b9f7d342 /* TrendView.swift */,
 				a5366fa99e8d55eca89c528b /* UpdateView.swift */,
+				41b3bdf5e06d5796b0ca10f4 /* VoiceRecordView.swift */,
 				542f92ffd9d65b25b7f50c5f /* WeightEditView.swift */,
 				22e76a7a875e56789f502550 /* WeightListView.swift */,
 				0ae55f9e60705eb08ec8e15f /* WeightApp.swift */,
@@ -193,6 +199,7 @@
 				3ceb13d339c8527eb71456b4 /* ColorHex.swift in Sources */,
 				e28017fbba4855a7972f4a44 /* ImageUtil.swift in Sources */,
 				7f17715cecf55b9ca608ccfe /* Keychain.swift in Sources */,
+				4ba388da4e7758f9959f122c /* SpeechRecognizer.swift in Sources */,
 				b97da62edf2a503a849ff8ec /* Theme.swift in Sources */,
 				bf2dd696019f50e38fb98b0b /* UpdateChecker.swift in Sources */,
 				f39280a38b735eb8a82bc0d9 /* XLSXParser.swift in Sources */,
@@ -208,6 +215,7 @@
 				30a1693e872c5d6b862147d8 /* StatsView.swift in Sources */,
 				0b0ba687a0ba5f2bbf936e53 /* TrendView.swift in Sources */,
 				3ff636877a8e59c5b1a450e8 /* UpdateView.swift in Sources */,
+				a24d38196e0d52629a124f71 /* VoiceRecordView.swift in Sources */,
 				98ccf720fd9e5226b459418b /* WeightEditView.swift in Sources */,
 				68f67074b0bc5979b07e7f63 /* WeightListView.swift in Sources */,
 				a415274568cf55a78c5a037d /* WeightApp.swift in Sources */,
