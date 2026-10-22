@@ -1,15 +1,15 @@
 #!/bin/sh
-# weight-app 后端自动部署：从 GitHub Release 下载镜像 tar.gz → docker load → 重建容器。
+# weight-app 后端自动部署：优先「只同步源码」（秒级），依赖变化时才换镜像。
 #
-# 为什么走「镜像 tar.gz 发 Release」而不是 ghcr.io / NAS 本地 build：
-#   - NAS 直连 Docker Hub（registry-1.docker.io）被墙，拉不到 node:20-slim，本地 build 必失败。
-#   - ghcr.io 包默认 private，匿名拉取 denied，设 public 的包命名空间又反复对不上。
-#   - 而仓库是 public 的，Release 资产匿名可下载（NAS 实测 200）。
-#   所以：CI 在云端 build 镜像（能拉 node:20-slim）→ docker save 成 tar.gz → 发 Release，
-#   NAS 匿名下载 tar.gz → docker load。全链路无认证、无包可见性依赖。
+# 为什么需要两条通道：
+#   - 镜像 tar.gz 有 ~79MB，NAS 出口只有几十 KB/s，一次部署要 15~30 分钟。
+#   - 而绝大多数后端改动只涉及 src/*.js（几十 KB），完全没必要重传整个镜像。
+#   所以：
+#     1) 快速通道：下载 server-src.tar.gz（几十 KB）→ docker cp 进容器 → restart。
+#        package.json 与容器内的一致才走（依赖没变），否则回退。
+#     2) 镜像通道：weight-server.tar.gz（79MB），用于首次部署、依赖变化、容器丢失。
 #
-# 判断「是否有新版本」：下载前先用 HTTP HEAD 看 remote 的 Content-Length / ETag，
-# 与本地记录对比，变了才完整下载。沿用旧 JWT_SECRET（从旧容器读）。
+# 判断「是否有新版本」：HTTP HEAD 看 Release 资产的 ETag/Content-Length。
 #
 # 手动检查： sh /volume2/docker/ezbk/weight_server_autosync.sh && tail weight_server_autosync.log
 #
@@ -20,11 +20,13 @@ export PATH="/usr/local/bin:/usr/local/sbin:/usr/syno/bin:$PATH"
 
 IMAGE_NAME="weight-server:latest"
 ASSET_URL="https://github.com/hhxxc/weight-app/releases/latest/download/weight-server.tar.gz"
+SRC_URL="https://github.com/hhxxc/weight-app/releases/latest/download/server-src.tar.gz"
 APP_DIR="${WEIGHT_APP_DIR:-/volume2/docker/weight-server}"
 CONTAINER_NAME="weight-server"
 HOST_PORT="${WEIGHT_PORT:-18191}"
 STATE_DIR="${WEIGHT_STATE_DIR:-/volume2/docker/ezbk}"
 ETAG_FILE="$STATE_DIR/.weight_server_last_etag"
+SRC_ETAG_FILE="$STATE_DIR/.weight_server_src_etag"
 LOG="$STATE_DIR/weight_server_autosync.log"
 LOCK="$STATE_DIR/.weight_server.lock"
 
@@ -48,7 +50,57 @@ trap 'rm -f "$LOCK"' EXIT INT TERM
 
 mkdir -p "$STATE_DIR"
 
-# 1. 先 HEAD 探测远程是否更新（拿 ETag/Content-Length，不下载大文件）
+RUNNING=$(docker ps --filter name="$CONTAINER_NAME" --format '{{.Names}}' 2>/dev/null)
+
+# ---------- 通道一：只同步源码（秒级） ----------
+SRC_TAG=$(curl -sI -L -m 60 "$SRC_URL" 2>/dev/null | grep -iE '^(etag|content-length):' | tr '\n' ' ' | tr -d '\r')
+SRC_LAST=""
+[ -f "$SRC_ETAG_FILE" ] && SRC_LAST=$(cat "$SRC_ETAG_FILE" 2>/dev/null || echo "")
+
+if [ -n "$SRC_TAG" ] && [ "$SRC_TAG" != "$SRC_LAST" ] && [ -n "$RUNNING" ]; then
+    log "发现源码更新：$SRC_TAG（旧：${SRC_LAST:-无}），尝试快速部署"
+    TMP_SRC="/tmp/weight-src.tar.gz"
+    if curl -sL -m 180 -o "$TMP_SRC" "$SRC_URL" >> "$LOG" 2>&1 && gzip -t "$TMP_SRC" 2>/dev/null; then
+        rm -rf /tmp/weight-src
+        mkdir -p /tmp/weight-src
+        if tar -xzf "$TMP_SRC" -C /tmp/weight-src 2>/dev/null; then
+            LOCAL_PKG=$(md5sum /tmp/weight-src/package.json 2>/dev/null | cut -d' ' -f1)
+            REMOTE_PKG=$(docker exec "$CONTAINER_NAME" md5sum /app/package.json 2>/dev/null | cut -d' ' -f1)
+            if [ -n "$LOCAL_PKG" ] && [ "$LOCAL_PKG" = "$REMOTE_PKG" ]; then
+                OK=1
+                docker exec "$CONTAINER_NAME" rm -rf /app/src.new >> "$LOG" 2>&1 || OK=0
+                if [ "$OK" = "1" ]; then
+                    docker cp /tmp/weight-src/src "$CONTAINER_NAME":/app/src.new >> "$LOG" 2>&1 || OK=0
+                fi
+                if [ "$OK" = "1" ]; then
+                    docker exec "$CONTAINER_NAME" sh -c 'rm -rf /app/src && mv /app/src.new /app/src' >> "$LOG" 2>&1 || OK=0
+                fi
+                if [ "$OK" = "1" ]; then
+                    docker restart "$CONTAINER_NAME" >> "$LOG" 2>&1 || OK=0
+                fi
+                if [ "$OK" = "1" ]; then
+                    echo "$SRC_TAG" > "$SRC_ETAG_FILE"
+                    # 同时记下当前镜像 ETag，避免下一次巡检又去下 79MB
+                    IMG_TAG=$(curl -sI -L -m 60 "$ASSET_URL" 2>/dev/null | grep -iE '^(etag|content-length):' | tr '\n' ' ' | tr -d '\r')
+                    [ -n "$IMG_TAG" ] && echo "$IMG_TAG" > "$ETAG_FILE"
+                    log "快速部署完成（仅源码，秒级）：$SRC_TAG"
+                    docker ps --filter name="$CONTAINER_NAME" --format '{{.Names}} {{.Status}}' >> "$LOG" 2>&1
+                    rm -rf /tmp/weight-src "$TMP_SRC"
+                    exit 0
+                fi
+                log "WARN: 快速部署失败，回退镜像通道"
+            else
+                log "依赖有变化（package.json 不一致），回退镜像通道"
+            fi
+        fi
+    else
+        log "WARN: 源码包下载/校验失败，回退镜像通道"
+    fi
+    rm -f "$TMP_SRC"
+    rm -rf /tmp/weight-src
+fi
+
+# ---------- 通道二：整镜像部署（依赖变化 / 首次 / 容器丢失） ----------
 REMOTE_TAG=$(curl -sI -L -m 60 "$ASSET_URL" 2>/dev/null | grep -iE '^(etag|content-length):' | tr '\n' ' ' | tr -d '\r')
 if [ -z "$REMOTE_TAG" ]; then
     log "WARN: 探测 Release 资产失败（网络/URL 问题），跳过本次"
@@ -58,7 +110,6 @@ fi
 LAST=""
 [ -f "$ETAG_FILE" ] && LAST=$(cat "$ETAG_FILE" 2>/dev/null || echo "")
 
-RUNNING=$(docker ps --filter name="$CONTAINER_NAME" --format '{{.Names}}' 2>/dev/null)
 if [ "$REMOTE_TAG" = "$LAST" ] && [ -n "$RUNNING" ]; then
     exit 0   # 已是最新，静默
 fi
@@ -66,14 +117,12 @@ fi
 [ -z "$LAST" ] && log "初始化：首次下载后端镜像（$REMOTE_TAG）" \
               || log "发现后端更新：$REMOTE_TAG（旧：$LAST），重新部署"
 
-# 2. 下载 tar.gz
 TMP_TAR="/tmp/weight-server.tar.gz"
 if ! curl -sL -m 1800 -o "$TMP_TAR" "$ASSET_URL" >> "$LOG" 2>&1; then
     log "FAIL: 下载镜像 tar.gz 失败"
     exit 0
 fi
 
-# 3. 校验是 gzip，再 docker load
 if ! gzip -t "$TMP_TAR" 2>/dev/null; then
     log "WARN: 下载内容不是有效 gzip（可能是错误页），跳过"
     rm -f "$TMP_TAR"
@@ -87,12 +136,11 @@ if ! docker load -i "$TMP_TAR" >> "$LOG" 2>&1; then
 fi
 rm -f "$TMP_TAR"
 
-# 4. 沿用旧 JWT_SECRET：环境变量 → 旧容器环境 → 默认值
+# 沿用旧 JWT_SECRET：环境变量 → 旧容器环境 → 默认值
 OLD_SECRET=$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$CONTAINER_NAME" 2>/dev/null \
              | grep '^JWT_SECRET=' | head -1 | cut -d= -f2-)
 SECRET="${JWT_SECRET:-${OLD_SECRET:-change-me-in-production}}"
 
-# 5. 重建容器
 mkdir -p "$APP_DIR"
 docker rm -f "$CONTAINER_NAME" 2>/dev/null
 docker run -d --name "$CONTAINER_NAME" --restart unless-stopped \
@@ -103,8 +151,8 @@ docker run -d --name "$CONTAINER_NAME" --restart unless-stopped \
     -v /volume2/docker/giliconcloude_key.txt:/data/giliconcloude_key.txt:ro \
     "$IMAGE_NAME" >> "$LOG" 2>&1 || { log "FAIL: docker run 失败"; exit 1; }
 
-# 6. 记录
 echo "$REMOTE_TAG" > "$ETAG_FILE"
+[ -n "$SRC_TAG" ] && echo "$SRC_TAG" > "$SRC_ETAG_FILE"
 log "后端部署完成：$REMOTE_TAG → 端口 $HOST_PORT（secret 已沿用）"
 docker ps --filter name="$CONTAINER_NAME" --format '{{.Names}} {{.Status}} {{.Ports}}' >> "$LOG" 2>&1
 

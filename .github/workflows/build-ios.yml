@@ -166,10 +166,16 @@ jobs:
           docker save weight-server | gzip > weight-server.tar.gz
           ls -la weight-server.tar.gz
 
+      # 源码包只有几十 KB：NAS 走「docker cp + restart」秒级部署，不必等 79MB 镜像
+      - name: Package source (fast deploy)
+        run: |
+          tar -czf server-src.tar.gz -C server package.json src
+          ls -la server-src.tar.gz
+
       - name: Upload tarball to latest release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="$(gh release list --limit 1 --json tagName -q '.[0].tagName')"
-          echo "==> 追加镜像 tar 到 release: $TAG"
-          gh release upload "$TAG" weight-server.tar.gz --clobber
+          echo "==> 追加镜像与源码包到 release: $TAG"
+          gh release upload "$TAG" weight-server.tar.gz server-src.tar.gz --clobber
