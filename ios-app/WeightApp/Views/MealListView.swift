@@ -267,57 +267,29 @@ struct MealListView: View {
                     }
                 } else {
                     List {
-                        ForEach(dayMeals) { m in
-                            HStack(alignment: .top, spacing: 12) {
-                                Text(m.typeName)
-                                    .font(.caption.bold())
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(typeColor(m.type))
-                                    .cornerRadius(8)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(m.content)
-                                        .font(.body)
-                                    if !m.kcalText.isEmpty {
-                                        Text(m.kcalText)
-                                            .font(.caption)
-                                            .foregroundColor(.accentColor)
+                        ForEach(groupedMeals) { group in
+                            Section {
+                                ForEach(group.items) { m in
+                                    mealRow(m)
+                                }
+                                .onDelete { offsets in
+                                    deleteMeals(group.items, at: offsets)
+                                }
+                            } header: {
+                                HStack {
+                                    Text(typeLabel(group.type))
+                                    Spacer()
+                                    if group.kcal > 0 {
+                                        Text("\(Int(group.kcal.rounded())) 千卡")
                                     }
                                 }
-                                Spacer()
-                                // 食物缩略图
-                                if let url = APIClient.shared.imageURL(for: m.image_url) {
-                                    AsyncImage(url: url) { phase in
-                                        switch phase {
-                                        case .success(let image):
-                                            image.resizable().scaledToFill()
-                                        case .failure:
-                                            Image(systemName: "photo")
-                                                .foregroundColor(.secondary)
-                                        default:
-                                            ProgressView().scaleEffect(0.7)
-                                        }
-                                    }
-                                    .frame(width: 52, height: 52)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        viewingImage = url
-                                        showViewer = true
-                                    }
-                                }
-                                Image(systemName: "chevron.right")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .textCase(nil)
                             }
-                            .padding(.vertical, 4)
-                            .contentShape(Rectangle())
-                            .onTapGesture { editingMeal = m }
                         }
-                        .onDelete(perform: deleteItems)
                     }
-                    .listStyle(.plain)
+                    .listStyle(.insetGrouped)
                     .refreshable { await state.refreshMeals(date: dateStr) }
                 }
 
@@ -365,13 +337,60 @@ struct MealListView: View {
         .navigationViewStyle(.stack)
     }
 
-    private func typeColor(_ t: String) -> Color {
-        switch t {
-        case "breakfast": return .orange
-        case "lunch": return .green
-        case "dinner": return .purple
-        default: return .gray
+    // MARK: - 按餐次分组
+
+    private struct MealGroup: Identifiable {
+        let id: String
+        let type: String
+        let items: [MealRecord]
+        let kcal: Double
+    }
+
+    private var groupedMeals: [MealGroup] {
+        let order = ["breakfast", "lunch", "dinner", "snack"]
+        return order.compactMap { t in
+            let items = dayMeals.filter { $0.type == t }
+            guard !items.isEmpty else { return nil }
+            return MealGroup(id: t, type: t, items: items,
+                             kcal: items.reduce(0.0) { $0 + ($1.kcal ?? 0) })
         }
+    }
+
+    private func typeLabel(_ t: String) -> String {
+        switch t {
+        case "breakfast": return "早餐"
+        case "lunch": return "午餐"
+        case "dinner": return "晚餐"
+        default: return "加餐"
+        }
+    }
+
+    private func mealRow(_ m: MealRecord) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(m.content).font(.body)
+                if !m.kcalText.isEmpty {
+                    Text(m.kcalText)
+                        .font(.caption)
+                        .foregroundColor(.accentColor)
+                }
+            }
+            Spacer()
+            if let url = APIClient.shared.imageURL(for: m.image_url) {
+                ThumbnailImage(url: url)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        viewingImage = url
+                        showViewer = true
+                    }
+            }
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 3)
+        .contentShape(Rectangle())
+        .onTapGesture { editingMeal = m }
     }
 
     /// 底部操作栏：拍照识图主按钮 + 两个次要入口
@@ -424,12 +443,12 @@ struct MealListView: View {
         }
     }
 
-    private func deleteItems(at offsets: IndexSet) {
-        let items = offsets.map { dayMeals[$0] }
+    private func deleteMeals(_ items: [MealRecord], at offsets: IndexSet) {
+        let targets = offsets.map { items[$0] }
         Haptics.tap()
         Task {
             var failed = 0
-            for m in items {
+            for m in targets {
                 do { try await APIClient.shared.deleteMeal(id: m.id) }
                 catch { failed += 1 }
             }
