@@ -139,7 +139,7 @@ struct FoodRecognizeView: View {
                     if saving {
                         ProgressView().scaleEffect(0.8)
                     } else {
-                        Text("记入 \(dateStr)").frame(maxWidth: .infinity)
+                        Text("记入 \(chineseDateString(dateStr))").frame(maxWidth: .infinity)
                     }
                 }
                 .buttonStyle(.borderedProminent)

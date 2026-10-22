@@ -24,6 +24,26 @@ struct WeightRecord: Identifiable, Codable, Equatable {
         f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }()
+
+    /// 中文日期格式化（2026年10月22日）
+    static let chineseDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy年M月d日"
+        f.locale = Locale(identifier: "zh_CN")
+        return f
+    }()
+
+    /// 中文日期显示
+    var chineseDate: String {
+        guard let d = dateObj else { return date }
+        return Self.chineseDateFormatter.string(from: d)
+    }
+}
+
+/// 把 YYYY-MM-DD 字符串转中文日期（用于无 Date 对象的场景）
+func chineseDateString(_ dateStr: String) -> String {
+    guard let d = WeightRecord.dateFormatter.date(from: dateStr) else { return dateStr }
+    return WeightRecord.chineseDateFormatter.string(from: d)
 }
 
 /// 一条饮食记录

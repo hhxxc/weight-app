@@ -132,7 +132,7 @@ struct NutritionOCRView: View {
 
                 Button(action: save) {
                     if saving { ProgressView().scaleEffect(0.8) }
-                    else { Text("记入 \(dateStr)").frame(maxWidth: .infinity) }
+                    else { Text("记入 \(chineseDateString(dateStr))").frame(maxWidth: .infinity) }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(saving)

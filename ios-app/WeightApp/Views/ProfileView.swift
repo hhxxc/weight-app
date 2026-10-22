@@ -232,7 +232,7 @@ struct ImportView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         ForEach(preview.prefix(3), id: \.date) { p in
-                            Text("\(p.date)  \(String(format: "%.1f", p.kg)) kg")
+                            Text("\(chineseDateString(p.date))  \(String(format: "%.1f", p.kg)) kg")
                                 .font(.caption)
                         }
                     }

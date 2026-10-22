@@ -91,7 +91,7 @@ struct WeightListView: View {
                 ForEach(sortedWeights) { w in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(w.date).font(.subheadline)
+                            Text(w.chineseDate).font(.subheadline)
                             if !w.note.isEmpty {
                                 Text(w.note).font(.caption).foregroundColor(.secondary)
                             }
@@ -151,7 +151,7 @@ struct OverviewCard: View {
         VStack(alignment: .leading, spacing: 0) {
             // 顶部标签行
             HStack {
-                Text(latest?.date ?? "当前体重")
+                Text(latest?.chineseDate ?? "当前体重")
                     .font(.subheadline)
                     .foregroundColor(.white.opacity(0.9))
                 Spacer()
