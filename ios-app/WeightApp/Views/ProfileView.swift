@@ -152,7 +152,7 @@ struct ProfileEditView: View {
                                                              heightCm: height,
                                                              targetKg: target)
                 await MainActor.run {
-                    state.user = u
+                    state.updateUser(u)
                     dismiss()
                 }
             } catch let err {

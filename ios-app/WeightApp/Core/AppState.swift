@@ -69,6 +69,12 @@ final class AppState: ObservableObject {
         cacheSnapshot()
     }
 
+    /// 更新资料并同步本地缓存（改身高/目标后，BMI 与预测立即生效）
+    func updateUser(_ u: UserProfile) {
+        user = u
+        CacheStore.save(u, "user")
+    }
+
     // MARK: - 登录 / 登出
 
     func handleAuth(_ resp: AuthResponse) {
@@ -128,6 +134,7 @@ final class AppState: ObservableObject {
             let (u, w) = try await (meRequest, weightsRequest)
             user = u
             weights = w
+            errorMessage = nil
             cacheSnapshot()
             AppLogger.shared.log("启动加载：\(w.count) 条体重记录")
             await flushPendingWeights()

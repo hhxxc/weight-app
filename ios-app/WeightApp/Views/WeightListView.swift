@@ -28,7 +28,11 @@ struct WeightListView: View {
                 if state.isLoading && state.weights.isEmpty {
                     skeleton
                 } else if state.weights.isEmpty {
-                    emptyView
+                    if let err = state.errorMessage {
+                        errorView(err)
+                    } else {
+                        emptyView
+                    }
                 } else {
                     list
                 }
@@ -99,6 +103,26 @@ struct WeightListView: View {
             Spacer()
         }
         .padding(16)
+    }
+
+    private func errorView(_ message: String) -> some View {
+        VStack(spacing: 14) {
+            Image(systemName: "wifi.exclamationmark")
+                .font(.system(size: 44))
+                .foregroundColor(.secondary)
+            Text("连不上服务器")
+                .font(.headline)
+            Text(message)
+                .font(.footnote)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+            Button("重试") {
+                Task { await state.bootstrap() }
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
     }
 
     private var emptyView: some View {
@@ -238,6 +262,15 @@ struct WeightListView: View {
                         .foregroundColor(.secondary)
                 }
             }
+
+            // 数据太旧时提醒：预测会随后续记录变化
+            if let lastDate = latest?.dateObj,
+               let days = Calendar.current.dateComponents([.day], from: lastDate, to: Date()).day,
+               days > 7 {
+                Label("上次称重已是 \(days) 天前，预测会随新记录更新", systemImage: "clock")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
         }
         .padding(.vertical, 4)
     }
@@ -278,7 +311,7 @@ struct WeightListView: View {
         Haptics.tap()
         Task {
             // 本地先移除，界面即时响应；失败再回滚
-            await state.removeLocalWeights(dates: items.map { $0.date })
+            state.removeLocalWeights(dates: items.map { $0.date })
             var failed = 0
             for w in items {
                 do {
@@ -289,7 +322,7 @@ struct WeightListView: View {
             }
             if failed > 0 {
                 await state.refreshWeights()
-                await state.showToast("有 \(failed) 条删除失败，已恢复")
+                state.showToast("有 \(failed) 条删除失败，已恢复")
                 await MainActor.run { Haptics.error() }
             } else {
                 await MainActor.run { Haptics.success() }

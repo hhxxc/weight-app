@@ -7,6 +7,7 @@ struct StatsView: View {
     @State private var advice: String?
     @State private var loadingAdvice = false
     @State private var error: String?
+    @State private var lastLoadAt: Date?
 
     private let adviceKey = "stats.advice.text"
     private let adviceStampKey = "stats.advice.stamp"
@@ -33,9 +34,11 @@ struct StatsView: View {
                 }
             }
             .navigationTitle("分析")
-            .task {
+            .onAppear {
+                // 每次切回分析页都刷新（5 秒内重复进入不重复请求）
                 loadCachedAdvice()
-                await load()
+                if let t = lastLoadAt, Date().timeIntervalSince(t) < 5 { return }
+                Task { await load() }
             }
             .refreshable { await load() }
         }
@@ -133,7 +136,11 @@ struct StatsView: View {
     private func load() async {
         do {
             let s = try await APIClient.shared.fetchStats()
-            await MainActor.run { stats = s; error = nil }
+            await MainActor.run {
+                stats = s
+                error = nil
+                lastLoadAt = Date()
+            }
         } catch let err {
             await MainActor.run { error = err.localizedDescription }
         }

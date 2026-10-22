@@ -131,9 +131,9 @@ enum TrendAnalysis {
         return "趋势置信 低"
     }
 
-    /// 预计达标文案（日期 / 已达成 / 暂无趋势）
+    /// 预计达标文案（日期 / 已达成 / 暂无法推算）
     static func targetText(_ f: Forecast) -> String {
-        guard let d = f.daysToTarget else { return "暂无趋势" }
+        guard let d = f.daysToTarget else { return "暂无法推算" }
         if d == 0 { return "已达成" }
         if let dt = f.targetDate { return shortDate(dt) }
         return "\(d) 天后"

@@ -83,7 +83,7 @@ struct WeightEditView: View {
 
         // 乐观更新：本地立即生效并关闭面板，网络在后台完成
         Task {
-            await state.applyLocalWeight(date: dateStr, kg: kg, note: noteText)
+            state.applyLocalWeight(date: dateStr, kg: kg, note: noteText)
             await MainActor.run {
                 Haptics.success()
                 dismiss()
@@ -93,13 +93,13 @@ struct WeightEditView: View {
                 // 编辑时改了日期：把旧日期那条删掉，避免出现两条
                 if let old = oldDate, old != dateStr {
                     try? await APIClient.shared.deleteWeight(date: old)
-                    await state.removeLocalWeights(dates: [old])
+                    state.removeLocalWeights(dates: [old])
                 }
                 await state.refreshWeights()
             } catch {
                 // 断网也不丢记录：进待同步队列，下次启动自动补传
                 PendingSync.add(date: dateStr, kg: kg, note: noteText)
-                await state.showToast("已存本地，联网后自动同步")
+                state.showToast("已存本地，联网后自动同步")
             }
         }
     }
