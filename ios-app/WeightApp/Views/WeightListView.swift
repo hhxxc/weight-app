@@ -174,12 +174,23 @@ struct WeightListView: View {
 
     private var list: some View {
         List {
-            // 渐变大卡片（全宽，无分组边距）
-            Section {
-                OverviewCard(latest: latest, weights: state.weights, user: state.user)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
+            // 达成目标：放在最上面先庆祝一下
+            if reachedTarget {
+                Section { celebrationCard }
             }
+
+            // 渐变大卡片（全宽，无分组边距）；没有记录时换成引导卡
+            Section {
+                if state.weights.isEmpty && !state.isLoading {
+                    emptyCard
+                } else {
+                    OverviewCard(latest: latest, weights: state.weights, user: state.user)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                }
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
 
             // 今日饮食预算（一眼知道还能吃多少）
             Section {
@@ -277,8 +288,66 @@ struct WeightListView: View {
         .padding(.vertical, 2)
     }
 
-    // MARK: - 今日饮食
+    // MARK: - 空状态 / 目标达成
 
+    private var reachedTarget: Bool {
+        guard let t = state.user?.target_kg, t > 0, let cur = latest?.kg else { return false }
+        return cur <= t
+    }
+
+    private var emptyCard: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "scalemass")
+                .font(.system(size: 34))
+                .foregroundColor(.white.opacity(0.95))
+            Text("还没有体重记录")
+                .font(.headline)
+                .foregroundColor(.white)
+            Text("站上体重秤记下第一笔，之后就能看到趋势、预测和每周小结")
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.9))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+            Button {
+                Haptics.tap()
+                showAdd = true
+            } label: {
+                Text("记录第一次体重")
+                    .font(.subheadline.bold())
+                    .foregroundColor(Theme.brandDeep)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(Color.white)
+                    .clipShape(Capsule())
+            }
+            .padding(.top, 2)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 26)
+        .background(Theme.brandGradient)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .padding(16)
+    }
+
+    private var celebrationCard: some View {
+        HStack(spacing: 12) {
+            Text("🎉").font(.title2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("目标达成")
+                    .font(.subheadline.bold())
+                    .foregroundColor(Theme.brandDeep)
+                Text(String(format: "已经到 %.1f kg 了，接下来保持住就好", latest?.kg ?? 0))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+        }
+        .padding(14)
+        .background(Theme.brandBlue.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    // MARK: - 今日饮食
     private var todayMealCard: some View {
         let target = state.user?.kcalTarget(currentKg: state.sortedDesc.first?.kg)
         let kcal = state.todayKcal

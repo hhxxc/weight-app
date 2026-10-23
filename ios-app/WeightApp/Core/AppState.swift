@@ -249,6 +249,23 @@ final class AppState: ObservableObject {
         todayKcalLoaded = true
     }
 
+    // MARK: - 首次使用引导
+
+    private var onboardingKey: String {
+        "onboardingSeen.\(user?.username ?? "-")"
+    }
+
+    /// 还没有身高/目标体重时，登录后引导一次（同一个人只问一次，点「稍后」也算）
+    var needsOnboarding: Bool {
+        guard isLoggedIn, let u = user else { return false }
+        if UserDefaults.standard.bool(forKey: onboardingKey) { return false }
+        return (u.height_cm ?? 0) <= 0 || (u.target_kg ?? 0) <= 0
+    }
+
+    func markOnboardingSeen() {
+        UserDefaults.standard.set(true, forKey: onboardingKey)
+    }
+
     /// 拉今日汇总（首页未打开饮食页时也能显示预算）
     @MainActor
     func refreshTodaySummary() async {

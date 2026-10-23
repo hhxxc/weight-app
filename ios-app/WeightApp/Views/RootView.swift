@@ -4,6 +4,7 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject var state: AppState
     @Environment(\.scenePhase) private var scenePhase
+    @State private var showOnboarding = false
 
     var body: some View {
         Group {
@@ -14,6 +15,13 @@ struct RootView: View {
             } else {
                 LoginView()
             }
+        }
+        .sheet(isPresented: $showOnboarding) {
+            OnboardingView()
+        }
+        .onAppear { showOnboarding = state.needsOnboarding }
+        .onChange(of: state.isLoggedIn) { loggedIn in
+            showOnboarding = loggedIn && state.needsOnboarding
         }
         .accentColor(Theme.brandDeep)   // 全局强调色：品牌深青
         .overlay(alignment: .top) {
