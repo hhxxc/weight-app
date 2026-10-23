@@ -229,10 +229,48 @@ struct TrendView: View {
     @EnvironmentObject var state: AppState
     @Environment(\.dismiss) private var dismiss
 
+    /// 图表时间跨度
+    private enum Span: String, CaseIterable, Identifiable {
+        case week = "7 天"
+        case month = "30 天"
+        case quarter = "90 天"
+        case all = "全部"
+
+        var id: String { rawValue }
+
+        var days: Int? {
+            switch self {
+            case .week: return 7
+            case .month: return 30
+            case .quarter: return 90
+            case .all: return nil
+            }
+        }
+    }
+
+    @State private var span: Span = .all
+
     private var ascending: [WeightRecord] { state.sortedAsc }
 
+    /// 区间内记录（严格按日期过滤）
+    private var ranged: [WeightRecord] {
+        guard let days = span.days else { return ascending }
+        let cutoff = Calendar.current.date(byAdding: .day, value: -(days - 1), to: Date()) ?? Date()
+        let key = WeightRecord.dateFormatter.string(from: cutoff)
+        return ascending.filter { $0.date >= key }
+    }
+
+    /// 区间内一条记录都没有时（比如停了几天），退回全部，别给空图
+    private var displayWeights: [WeightRecord] {
+        ranged.isEmpty ? ascending : ranged
+    }
+
+    private var showingFallback: Bool {
+        span.days != nil && ranged.isEmpty && !ascending.isEmpty
+    }
+
     private var stats: (min: Double, max: Double, avg: Double, change: Double) {
-        let kgs = ascending.map { $0.kg }
+        let kgs = displayWeights.map { $0.kg }
         let minV = kgs.min() ?? 0
         let maxV = kgs.max() ?? 0
         let avg = kgs.isEmpty ? 0 : kgs.reduce(0, +) / Double(kgs.count)
@@ -257,8 +295,36 @@ struct TrendView: View {
                     }
                     .padding(.vertical, 8)
 
+                    // 时间跨度
+                    HStack(spacing: 8) {
+                        ForEach(Span.allCases) { s in
+                            Button {
+                                Haptics.tap()
+                                span = s
+                            } label: {
+                                Text(s.rawValue)
+                                    .font(.caption.bold())
+                                    .foregroundColor(span == s ? .white : Theme.brandDeep)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(span == s ? Theme.brandDeep : Theme.brandBlue.opacity(0.10))
+                                    .clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 8)
+
+                    if showingFallback {
+                        Text("\(span.rawValue)内还没有记录，下面显示全部数据")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 8)
+                    }
+
                     // 大图
-                    TrendChartView(weights: ascending,
+                    TrendChartView(weights: displayWeights,
                                    height: 260,
                                    showDetail: true,
                                    targetKg: state.user?.target_kg,
