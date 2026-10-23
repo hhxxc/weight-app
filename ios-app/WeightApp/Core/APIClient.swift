@@ -327,6 +327,25 @@ final class APIClient {
 
     // MARK: - 常吃食物
 
+    struct MealSearchHit: Decodable, Identifiable {
+        let id: Int
+        let date: String
+        let type: String
+        let content: String
+        let kcal: Double?
+        let protein_g: Double?
+        let fat_g: Double?
+        let carbs_g: Double?
+        let image_url: String?
+    }
+
+    /// 按菜名搜历史饮食（最近优先）
+    func searchMeals(query: String) async throws -> [MealSearchHit] {
+        let q = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let r: [String: [MealSearchHit]] = try await request("GET", "/meals/search?q=\(q)")
+        return r["items"] ?? []
+    }
+
     struct MealDaySummary: Decodable, Identifiable {
         var id: String { date }
         let date: String

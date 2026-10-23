@@ -351,6 +351,22 @@ route('POST', '/meals', async (req, res) => {
   json(res, 201, { item: row });
 }, true);
 
+// 搜索历史饮食：按菜名模糊匹配，最近优先（用于「上次那道菜」再记一次）
+route('GET', '/meals/search', (req, res) => {
+  const q = String(req.query.get('q') || '').trim();
+  if (!q) return json(res, 200, { items: [] });
+  const safe = q.replace(/[%_\\]/g, '');
+  if (!safe) return json(res, 200, { items: [] });
+  const rows = db.prepare(`
+    SELECT id, date, type, content, kcal, protein_g, fat_g, carbs_g, image_url
+    FROM meals
+    WHERE user_id = ? AND content LIKE ?
+    ORDER BY date DESC, id DESC
+    LIMIT 40
+  `).all(req.user.id, `%${safe}%`);
+  json(res, 200, { items: rows });
+}, true);
+
 // 一段时间的每日饮食汇总（周视图的小圆点用）
 route('GET', '/meals/summary', (req, res) => {
   const from = toDate(req.query.get('from'));

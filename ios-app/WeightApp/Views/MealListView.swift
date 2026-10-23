@@ -10,6 +10,7 @@ struct MealListView: View {
     @State private var showNutritionOCR = false
     @State private var showVoice = false
     @State private var showFrequent = false
+    @State private var showSearch = false
     @State private var weekSummary: [String: APIClient.MealDaySummary] = [:]
     @State private var editingMeal: MealRecord?
     @State private var viewingImage: URL?
@@ -297,6 +298,19 @@ struct MealListView: View {
                 bottomBar
             }
             .navigationTitle("饮食")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        Haptics.tap()
+                        showSearch = true
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                    }
+                }
+            }
+            .sheet(isPresented: $showSearch) {
+                MealSearchView(targetDate: dateStr)
+            }
             .sheet(isPresented: $showAdd) {
                 MealEditView(dateStr: dateStr)
             }
