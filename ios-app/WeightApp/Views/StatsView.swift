@@ -123,7 +123,7 @@ struct StatsView: View {
                 HStack(spacing: 12) {
                     macroBar("蛋白质", s.nutrition.avg7_protein_g, Theme.brandBlue)
                     macroBar("脂肪", s.nutrition.avg7_fat_g, Theme.warning)
-                    macroBar("碳水", s.nutrition.avg7_carbs_g, Theme.brandCyan)
+                    macroBar("碳水", s.nutrition.avg7_carbs_g, Theme.inkSecondary)
                 }
             } header: {
                 sectionHeader("营养 · 近7天日均", icon: "leaf.fill")
@@ -446,13 +446,9 @@ struct KcalBarChart: View {
             ForEach(Array(points.enumerated()), id: \.offset) { _, p in
                 RoundedRectangle(cornerRadius: 2)
                     .fill(
-                        p.kcal > 0
-                            ? LinearGradient(
-                                gradient: Gradient(colors: [Theme.brandCyan, Theme.brandBlue]),
-                                startPoint: .top, endPoint: .bottom)
-                            : LinearGradient(
-                                gradient: Gradient(colors: [Color.gray.opacity(0.15), Color.gray.opacity(0.15)]),
-                                startPoint: .top, endPoint: .bottom)
+                        LinearGradient(
+                            gradient: Gradient(colors: p.kcal > 0 ? [Theme.ink, Theme.ink] : [Theme.fill, Theme.fill]),
+                            startPoint: .top, endPoint: .bottom)
                     )
                     .frame(height: p.kcal > 0 ? max(2, CGFloat(p.kcal / maxKcal) * (height - 16)) : 2)
                     .frame(maxWidth: .infinity)

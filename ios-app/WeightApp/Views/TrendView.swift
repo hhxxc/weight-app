@@ -38,8 +38,8 @@ struct TrendChartView: View {
                         .fill(
                             LinearGradient(
                                 gradient: Gradient(colors: [
-                                    Theme.brandCyan.opacity(0.25),
-                                    Theme.brandCyan.opacity(0.0),
+                                    Theme.ink.opacity(0.07),
+                                    Theme.ink.opacity(0.0),
                                 ]),
                                 startPoint: .top,
                                 endPoint: .bottom
@@ -66,16 +66,16 @@ struct TrendChartView: View {
                 // 7 日移动平均（平滑日常称重噪声）
                 if avgPts.count > 1 {
                     TrendPath(points: avgPts, range: range, minKg: minKg)
-                        .stroke(Theme.brandBlue.opacity(0.55),
+                        .stroke(Theme.inkSecondary.opacity(0.55),
                                 style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round, dash: [5, 4]))
                 }
                 // 实际折线
                 TrendPath(points: pts, range: range, minKg: minKg)
-                    .stroke(Theme.brandDeep, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                    .stroke(Theme.ink, style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
                 // 数据点
                 ForEach(Array(pts.enumerated()), id: \.offset) { idx, p in
                     Circle()
-                        .fill(Theme.brandDeep)
+                        .fill(Theme.ink)
                         .frame(width: idx == pts.count - 1 ? 8 : 5, height: idx == pts.count - 1 ? 8 : 5)
                         .position(p)
                 }
@@ -339,8 +339,8 @@ struct TrendView: View {
 
                     // 图例
                     HStack(spacing: 14) {
-                        legendItem("实际", color: Theme.brandDeep, dashed: false)
-                        legendItem("7 日均线", color: Theme.brandBlue.opacity(0.7), dashed: true)
+                        legendItem("实际", color: Theme.ink, dashed: false)
+                        legendItem("7 日均线", color: Theme.inkSecondary.opacity(0.7), dashed: true)
                         if state.user?.target_kg != nil {
                             legendItem("目标", color: Theme.warning, dashed: true)
                         }
