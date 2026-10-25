@@ -1,4 +1,15 @@
 import SwiftUI
+import UIKit
+
+extension UIColor {
+    /// 0xRRGGBB 转 UIColor（主题动态色用）
+    convenience init(hex: UInt32) {
+        self.init(red: CGFloat((hex >> 16) & 0xFF) / 255,
+                  green: CGFloat((hex >> 8) & 0xFF) / 255,
+                  blue: CGFloat(hex & 0xFF) / 255,
+                  alpha: 1)
+    }
+}
 
 extension Color {
     /// 十六进制字符串转颜色（如 "4CAF50"）

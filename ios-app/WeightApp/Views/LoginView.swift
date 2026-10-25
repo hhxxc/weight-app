@@ -17,45 +17,58 @@ struct LoginView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 0) {
-                    // 渐变大 banner
-                    VStack(spacing: 10) {
-                        Image(systemName: "scalemass.fill")
-                            .font(.system(size: 52))
-                            .foregroundColor(.white)
+                    // 极简头部
+                    VStack(spacing: 12) {
+                        Image(systemName: "scalemass")
+                            .font(.system(size: 28, weight: .light))
+                            .foregroundColor(Theme.ink)
+                            .frame(width: 64, height: 64)
+                            .background(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .fill(Theme.fill)
+                            )
                         Text("体重记录")
-                            .font(.largeTitle.bold())
-                            .foregroundColor(.white)
+                            .font(.system(size: 24, weight: .medium))
+                            .foregroundColor(Theme.ink)
                         Text("记录每一天，遇见更好的自己")
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.85))
+                            .font(.system(size: 13))
+                            .foregroundColor(Theme.inkSecondary)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 56)
-                    .padding(.bottom, 60)
-                    .background(Theme.brandGradient)
-                    .clipShape(
-                        // 底部大圆角
-                        RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    )
-                    .ignoresSafeArea(edges: .top)
+                    .padding(.top, 64)
+                    .padding(.bottom, 32)
 
                     // 登录表单
                     VStack(spacing: 16) {
                         TextField("用户名", text: $username)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.plain)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
                             .focused($focusedField, equals: .username)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 13)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.fill)
+                            )
                         SecureField("密码", text: $password)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.plain)
                             .focused($focusedField, equals: .password)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 13)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.fill)
+                            )
                         TextField("服务器地址（留空用默认）", text: $server)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.plain)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
-                            .font(.footnote)
+                            .font(.system(size: 12))
+                            .foregroundColor(Theme.inkSecondary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 11)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.fill)
+                            )
 
                         if let error {
                             Text(error)
@@ -71,10 +84,10 @@ struct LoginView: View {
                                     .padding(.vertical, 8)
                             } else {
                                 Text("登录")
-                                    .font(.headline)
+                                    .font(.system(size: 15, weight: .medium))
                                     .foregroundColor(.white)
                                     .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
+                                    .padding(.vertical, 15)
                             }
                         }
                         .background(Theme.brandGradient)
@@ -83,8 +96,8 @@ struct LoginView: View {
                         .opacity(isBusy || username.isEmpty || password.isEmpty ? 0.6 : 1)
 
                         Text("账号由管理员分配，如需使用请联系管理员")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.inkTertiary)
                             .padding(.top, 8)
                     }
                     .padding(24)

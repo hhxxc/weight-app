@@ -205,6 +205,7 @@ struct StatsView: View {
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text(String(format: "%.1f", w.lost_kg ?? 0))
                     .font(.system(size: 44, weight: .medium))
+                    .tracking(-0.8)
                     .foregroundColor(Theme.ink)
                     .monospacedDigit()
                 Text("kg")

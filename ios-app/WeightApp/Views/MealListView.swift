@@ -48,17 +48,19 @@ struct MealListView: View {
                         .foregroundColor(Theme.ink)
                         .monospacedDigit()
                     Text("/ \(Int(target)) 千卡\(state.user?.isKcalTargetCustom == true ? "" : " · 自动")")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 11))
+                        .foregroundColor(Theme.inkTertiary)
                     Spacer()
                     if dayTotal.kcal > target {
-                        Text("超出 \(Int((dayTotal.kcal - target).rounded())) 千卡")
-                            .font(.caption.bold())
-                            .foregroundColor(Theme.danger)
+                        Text("超出 \(Int((dayTotal.kcal - target).rounded()))")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Theme.warning)
+                            .monospacedDigit()
                     } else {
-                        Text("还剩 \(Int((target - dayTotal.kcal).rounded())) 千卡")
-                            .font(.caption.bold())
+                        Text("还剩 \(Int((target - dayTotal.kcal).rounded()))")
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundColor(Theme.success)
+                            .monospacedDigit()
                     }
                 }
                 ProgressView(value: min(1, max(0, dayTotal.kcal / target)))
@@ -75,15 +77,16 @@ struct MealListView: View {
             }
 
             if !dayMeals.isEmpty {
-                HStack(spacing: 12) {
+                HStack(spacing: 14) {
                     Text("蛋白 \(Int(dayTotal.protein.rounded()))g")
                     Text("脂肪 \(Int(dayTotal.fat.rounded()))g")
                     Text("碳水 \(Int(dayTotal.carbs.rounded()))g")
                     Spacer()
                     Text("\(dayMeals.count) 条")
                 }
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(.system(size: 11))
+                .foregroundColor(Theme.inkTertiary)
+                .monospacedDigit()
             }
         }
         .padding(.horizontal, 16)
@@ -130,8 +133,8 @@ struct MealListView: View {
         VStack(spacing: 6) {
             HStack {
                 Text(weekRangeText)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.inkTertiary)
                 Spacer()
                 if !isCurrentWeek {
                     Button("回到今天") {
@@ -194,7 +197,7 @@ struct MealListView: View {
             .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(selected ? Theme.ink : (today ? Theme.ink.opacity(0.05) : Color.clear))
+                    .fill(selected ? Theme.solid : (today ? Theme.ink.opacity(0.05) : Color.clear))
             )
         }
         .buttonStyle(.plain)
@@ -255,13 +258,14 @@ struct MealListView: View {
                     } else {
                         VStack(spacing: 12) {
                             Image(systemName: "fork.knife")
-                                .font(.system(size: 50))
-                                .foregroundColor(.secondary)
+                                .font(.system(size: 34, weight: .light))
+                                .foregroundColor(Theme.inkTertiary)
                             Text("这一天还没有记录饮食")
-                                .font(.headline)
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(Theme.ink)
                             Text("点下方「拍照记饮食」，拍一张自动识别卡路里")
-                                .font(.footnote)
-                                .foregroundColor(.secondary)
+                                .font(.system(size: 13))
+                                .foregroundColor(Theme.inkSecondary)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, 30)
                         }
@@ -278,20 +282,24 @@ struct MealListView: View {
                                     deleteMeals(group.items, at: offsets)
                                 }
                             } header: {
-                                HStack {
+                                HStack(alignment: .firstTextBaseline) {
                                     Text(typeLabel(group.type))
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(Theme.inkSecondary)
                                     Spacer()
                                     if group.kcal > 0 {
                                         Text("\(Int(group.kcal.rounded())) 千卡")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(Theme.inkTertiary)
+                                            .monospacedDigit()
                                     }
                                 }
-                                .font(.caption)
-                                .foregroundColor(.secondary)
                                 .textCase(nil)
                             }
                         }
                     }
                     .listStyle(.insetGrouped)
+                    .listRowSeparatorTint(Theme.hairline)
                     .refreshable { await state.refreshMeals(date: dateStr) }
                 }
 
@@ -383,16 +391,20 @@ struct MealListView: View {
     private func mealRow(_ m: MealRecord) -> some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(m.content).font(.body)
+                Text(m.content)
+                    .font(.system(size: 15))
+                    .foregroundColor(Theme.ink)
+                    .lineLimit(2)
                 if !m.kcalText.isEmpty {
                     Text(m.kcalText)
-                        .font(.caption)
-                        .foregroundColor(.accentColor)
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.brandDeep)
+                        .monospacedDigit()
                 }
             }
-            Spacer()
+            Spacer(minLength: 6)
             if let url = APIClient.shared.imageURL(for: m.image_url) {
-                ThumbnailImage(url: url)
+                ThumbnailImage(url: url, size: 48)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         viewingImage = url
@@ -400,10 +412,10 @@ struct MealListView: View {
                     }
             }
             Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(Theme.inkTertiary.opacity(0.7))
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, 4)
         .contentShape(Rectangle())
         .onTapGesture { editingMeal = m }
     }
@@ -424,6 +436,7 @@ struct MealListView: View {
             }
             .background(Theme.brandGradient)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .buttonStyle(PressableStyle())
 
             HStack(spacing: 10) {
                 secondaryButton("常吃", icon: "clock.arrow.circlepath") { showFrequent = true }

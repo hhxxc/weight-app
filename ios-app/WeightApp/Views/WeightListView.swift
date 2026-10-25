@@ -74,6 +74,7 @@ struct WeightListView: View {
                 }
                 .background(Theme.brandGradient)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .buttonStyle(PressableStyle())
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
             }
@@ -229,12 +230,14 @@ struct WeightListView: View {
                         requestDelete(offsets.map { g.items[$0] })
                     }
                 } header: {
-                    HStack {
+                    HStack(alignment: .firstTextBaseline) {
                         Text(g.title)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(Theme.inkSecondary)
                         Spacer()
-                        Text(String(format: "%d 条 · 均 %.1f kg", g.items.count, g.average))
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                        Text(String(format: "%d 条 · 均 %.1f", g.items.count, g.average))
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.inkTertiary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
@@ -259,27 +262,42 @@ struct WeightListView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .listRowSeparatorTint(Theme.hairline)
         .refreshable { await state.refreshWeights() }
     }
 
     private func historyRow(_ w: WeightRecord) -> some View {
-        HStack {
+        HStack(alignment: .center, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(w.chineseDate).font(.subheadline)
+                Text(w.chineseDate)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(Theme.ink)
                 if !w.note.isEmpty {
-                    Text(w.note).font(.caption).foregroundColor(.secondary)
+                    Text(w.note)
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.inkTertiary)
+                        .lineLimit(1)
                 }
             }
-            Spacer()
-            Text(String(format: "%.1f kg", w.kg)).font(.headline).monospacedDigit()
+            Spacer(minLength: 8)
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(String(format: "%.1f", w.kg))
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(Theme.ink)
+                    .monospacedDigit()
+                Text("kg")
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.inkTertiary)
+            }
             if let bmi = w.bmi(heightCm: state.user?.height_cm) {
-                Text(String(format: "BMI %.1f", bmi))
-                    .font(.caption).foregroundColor(.secondary)
-                    .frame(width: 70, alignment: .trailing)
+                Text(String(format: "%.1f", bmi))
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.inkTertiary)
+                    .frame(width: 30, alignment: .trailing)
                     .monospacedDigit()
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 3)
     }
 
     // MARK: - 空状态 / 目标达成
@@ -531,6 +549,7 @@ struct OverviewCard: View {
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text(latest.map { String(format: "%.1f", $0.kg) } ?? "--")
                     .font(.system(size: 46, weight: .medium))
+                    .tracking(-0.8)
                     .foregroundColor(Theme.ink)
                     .monospacedDigit()
                 Text("kg")
