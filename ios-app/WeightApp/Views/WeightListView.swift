@@ -66,8 +66,8 @@ struct WeightListView: View {
                     Haptics.tap()
                     showAdd = true
                 } label: {
-                    Label("记录体重", systemImage: "plus.circle.fill")
-                        .font(.headline)
+                    Label("记录体重", systemImage: "plus")
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
@@ -125,7 +125,7 @@ struct WeightListView: View {
                 )
             ForEach(0..<3) { _ in
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color(UIColor.secondarySystemGroupedBackground))
+                    .fill(Theme.fill)
                     .frame(height: 54)
             }
             Spacer()
@@ -136,13 +136,14 @@ struct WeightListView: View {
     private func errorView(_ message: String) -> some View {
         VStack(spacing: 14) {
             Image(systemName: "wifi.exclamationmark")
-                .font(.system(size: 44))
-                .foregroundColor(.secondary)
+                .font(.system(size: 34, weight: .light))
+                .foregroundColor(Theme.inkTertiary)
             Text("连不上服务器")
-                .font(.headline)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(Theme.ink)
             Text(message)
-                .font(.footnote)
-                .foregroundColor(.secondary)
+                .font(.system(size: 13))
+                .foregroundColor(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
             Button("重试") {
@@ -204,7 +205,9 @@ struct WeightListView: View {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("体重趋势").font(.headline)
+                            Text("体重趋势")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(Theme.ink)
                             Spacer()
                             Text("\(String(format: "%.1f", state.sortedAsc.first?.kg ?? 0)) → \(String(format: "%.1f", state.sortedAsc.last?.kg ?? 0))")
                                 .font(.caption)

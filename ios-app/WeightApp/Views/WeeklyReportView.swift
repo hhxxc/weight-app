@@ -162,7 +162,7 @@ struct WeeklyReportView: View {
                         Haptics.success()
                     } label: {
                         Label("分享本周小结", systemImage: "square.and.arrow.up")
-                            .font(.headline)
+                            .font(.system(size: 15, weight: .medium))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
@@ -221,8 +221,8 @@ struct WeeklyReportView: View {
             metric("连续记录", "\(streak) 天")
         }
         .padding(.vertical, 14)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.card))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.hairline, lineWidth: 0.5))
     }
 
     private func metric(_ title: String, _ value: String) -> some View {
@@ -262,9 +262,9 @@ struct WeeklyReportView: View {
                     .foregroundColor(.secondary)
             }
         }
-        .padding(16)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(18)
+        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.card))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.hairline, lineWidth: 0.5))
     }
 
     private var verdictCard: some View {

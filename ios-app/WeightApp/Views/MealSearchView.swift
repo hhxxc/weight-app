@@ -108,8 +108,8 @@ struct MealSearchView: View {
                     .font(.caption.bold())
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Theme.brandBlue.opacity(0.12))
-                    .foregroundColor(Theme.brandDeep)
+                    .background(Theme.fill)
+                    .foregroundColor(Theme.ink)
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)

@@ -30,10 +30,11 @@ struct ProfileView: View {
                             }
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(state.user?.nickname.isEmpty == false ? state.user!.nickname : state.user?.username ?? "未登录")
-                                    .font(.headline)
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(Theme.ink)
                                 Text("@\(state.user?.username ?? "")")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(Theme.inkTertiary)
                             }
                             Spacer()
                             Image(systemName: "chevron.right")

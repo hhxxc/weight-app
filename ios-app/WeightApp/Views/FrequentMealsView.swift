@@ -21,13 +21,14 @@ struct FrequentMealsView: View {
                 } else if let error {
                     VStack(spacing: 12) {
                         Image(systemName: "wifi.exclamationmark")
-                            .font(.system(size: 40))
-                            .foregroundColor(.secondary)
+                            .font(.system(size: 34, weight: .light))
+                            .foregroundColor(Theme.inkTertiary)
                         Text("读取失败")
-                            .font(.headline)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(Theme.ink)
                         Text(error)
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
+                            .font(.system(size: 13))
+                            .foregroundColor(Theme.inkSecondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 32)
                         Button("重试") {
@@ -40,13 +41,14 @@ struct FrequentMealsView: View {
                 } else if items.isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "clock.arrow.circlepath")
-                            .font(.system(size: 44))
-                            .foregroundColor(.secondary)
+                            .font(.system(size: 34, weight: .light))
+                            .foregroundColor(Theme.inkTertiary)
                         Text("还没有可复用的记录")
-                            .font(.headline)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(Theme.ink)
                         Text("先用拍照、语音或手动记几次，这里会自动出现你常吃的东西")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
+                            .font(.system(size: 13))
+                            .foregroundColor(Theme.inkSecondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 32)
                     }

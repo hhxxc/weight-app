@@ -96,7 +96,8 @@ struct FamilyView: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(p.nickname.isEmpty ? p.username : p.nickname)
-                    .font(.subheadline.bold())
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(Theme.ink)
                 Text("体重 \(p.weight_days) 天 · 饮食 \(p.meal_days) 天")
                     .font(.caption2)
                     .foregroundColor(.secondary)
@@ -138,20 +139,21 @@ struct FamilyView: View {
                     .fill(Theme.brandGradient)
                     .frame(width: 40, height: 40)
                 Text(initial(m))
-                    .font(.headline)
+                    .font(.system(size: 15, weight: .medium))
                     .foregroundColor(.white)
             }
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(m.nickname.isEmpty ? m.username : m.nickname)
-                        .font(.subheadline.bold())
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(Theme.ink)
                     if m.is_admin == 1 {
                         Text("管理员")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(Theme.brandDeep)
+                            .foregroundColor(Theme.inkSecondary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Theme.brandBlue.opacity(0.12))
+                            .background(Theme.fill)
                             .clipShape(Capsule())
                     }
                 }

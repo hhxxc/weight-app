@@ -61,6 +61,7 @@ struct NutritionOCRView: View {
                         else { Label("识别", systemImage: "text.viewfinder") }
                     }
                     .buttonStyle(.borderedProminent)
+            .tint(Theme.solid)
                     .disabled(recognizing)
                 }
             } else {
@@ -76,6 +77,7 @@ struct NutritionOCRView: View {
                             Label("拍照", systemImage: "camera").frame(minWidth: 100)
                         }
                         .buttonStyle(.borderedProminent)
+            .tint(Theme.solid)
                         Button { showLibrary = true } label: {
                             Label("相册", systemImage: "photo").frame(minWidth: 100)
                         }
@@ -93,7 +95,9 @@ struct NutritionOCRView: View {
         if let r = result {
             VStack(spacing: 14) {
                 if !r.name.isEmpty {
-                    Text(r.name).font(.title3.bold())
+                    Text(r.name)
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundColor(Theme.ink)
                 }
                 Text("每 100g")
                     .font(.caption)
@@ -135,17 +139,23 @@ struct NutritionOCRView: View {
                     else { Text("记入 \(chineseDateString(dateStr))").frame(maxWidth: .infinity) }
                 }
                 .buttonStyle(.borderedProminent)
+            .tint(Theme.solid)
                 .disabled(saving)
             }
             .padding(16)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color(UIColor.secondarySystemGroupedBackground)))
+            .background(RoundedRectangle(cornerRadius: 10).fill(Theme.fill))
         }
     }
 
     private func nutrientCard(_ name: String, _ value: String, _ unit: String) -> some View {
         VStack(spacing: 4) {
-            Text(value).font(.title3.bold()).monospacedDigit()
-            Text("\(name) \(unit)").font(.caption).foregroundColor(.secondary)
+            Text(value)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(Theme.ink)
+                .monospacedDigit()
+            Text("\(name) \(unit)")
+                .font(.system(size: 11))
+                .foregroundColor(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)

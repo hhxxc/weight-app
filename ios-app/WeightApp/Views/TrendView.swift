@@ -304,10 +304,10 @@ struct TrendView: View {
                             } label: {
                                 Text(s.rawValue)
                                     .font(.caption.bold())
-                                    .foregroundColor(span == s ? .white : Theme.brandDeep)
+                                    .foregroundColor(span == s ? .white : Theme.inkSecondary)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
-                                    .background(span == s ? Theme.brandDeep : Theme.brandBlue.opacity(0.10))
+                                    .background(span == s ? Theme.solid : Theme.fill)
                                     .clipShape(Capsule())
                             }
                             .buttonStyle(.plain)
@@ -358,7 +358,7 @@ struct TrendView: View {
                         }
                         .padding(14)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Theme.brandBlue.opacity(0.07))
+                        .background(Theme.fill)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .padding(.horizontal, 8)
                     }
@@ -401,12 +401,12 @@ struct TrendView: View {
     private func statItem(_ title: String, _ value: String, color: Color = .primary) -> some View {
         VStack(spacing: 4) {
             Text(value)
-                .font(.headline)
+                .font(.system(size: 18, weight: .medium))
                 .foregroundColor(color)
                 .monospacedDigit()
             Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(.system(size: 11))
+                .foregroundColor(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)
     }

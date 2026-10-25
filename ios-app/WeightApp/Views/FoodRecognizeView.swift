@@ -77,6 +77,7 @@ struct FoodRecognizeView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
+            .tint(Theme.solid)
                     .disabled(recognizing)
                 }
             } else {
@@ -92,6 +93,7 @@ struct FoodRecognizeView: View {
                             Label("拍照", systemImage: "camera").frame(minWidth: 100)
                         }
                         .buttonStyle(.borderedProminent)
+            .tint(Theme.solid)
                         Button { showLibrary = true } label: {
                             Label("相册", systemImage: "photo").frame(minWidth: 100)
                         }
@@ -122,7 +124,8 @@ struct FoodRecognizeView: View {
     private func singleResult(_ r: APIClient.FoodRecognition) -> some View {
         VStack(spacing: 14) {
             Text(r.food.isEmpty ? "未识别出食物" : r.food)
-                .font(.title3.bold())
+                .font(.system(size: 17, weight: .medium))
+                .foregroundColor(Theme.ink)
 
             if r.converted_from_kj == true {
                 kjHint
@@ -158,10 +161,16 @@ struct FoodRecognizeView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
+            .tint(Theme.solid)
             .disabled(saving)
         }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color(UIColor.secondarySystemGroupedBackground)))
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.card)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.hairline, lineWidth: 0.5)
+        )
     }
 
     // MARK: - 多样食物
@@ -229,10 +238,16 @@ struct FoodRecognizeView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
+            .tint(Theme.solid)
             .disabled(saving || multiOn.filter { $0 }.isEmpty)
         }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color(UIColor.secondarySystemGroupedBackground)))
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.card)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.hairline, lineWidth: 0.5)
+        )
     }
 
     private var kjHint: some View {
@@ -328,12 +343,17 @@ struct FoodRecognizeView: View {
 
     private func nutrientCard(_ name: String, _ value: String, _ unit: String) -> some View {
         VStack(spacing: 4) {
-            Text(value).font(.title3.bold()).monospacedDigit()
-            Text("\(name) (\(unit))").font(.caption).foregroundColor(.secondary)
+            Text(value)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(Theme.ink)
+                .monospacedDigit()
+            Text("\(name) (\(unit))")
+                .font(.system(size: 11))
+                .foregroundColor(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Color(UIColor.systemBackground)))
+        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.fill))
     }
 
     // MARK: - 卡路里按克数缩放

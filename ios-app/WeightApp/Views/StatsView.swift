@@ -254,8 +254,13 @@ struct StatsView: View {
 
     private func calorieStat(_ title: String, _ v: Double) -> some View {
         VStack(spacing: 4) {
-            Text("\(Int(v.rounded()))").font(.title3.bold()).monospacedDigit()
-            Text(title).font(.caption).foregroundColor(.secondary)
+            Text("\(Int(v.rounded()))")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(Theme.ink)
+                .monospacedDigit()
+            Text(title)
+                .font(.system(size: 11))
+                .foregroundColor(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)
     }
@@ -353,9 +358,12 @@ struct StatsView: View {
         VStack(spacing: 5) {
             HStack(spacing: 5) {
                 Circle().fill(color).frame(width: 7, height: 7)
-                Text("\(Int(v.rounded()))g").font(.headline).monospacedDigit()
+                Text("\(Int(v.rounded()))g")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(Theme.ink)
+                    .monospacedDigit()
             }
-            Text(name).font(.caption).foregroundColor(.secondary)
+            Text(name).font(.system(size: 11)).foregroundColor(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)
     }

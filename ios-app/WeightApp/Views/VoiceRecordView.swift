@@ -56,7 +56,7 @@ struct VoiceRecordView: View {
                         .padding(8)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(UIColor.secondarySystemGroupedBackground))
+                                .fill(Theme.fill)
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
@@ -119,6 +119,7 @@ struct VoiceRecordView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
+            .tint(Theme.solid)
                     .disabled(saving || text.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
 
@@ -145,12 +146,17 @@ struct VoiceRecordView: View {
 
     private func estimationCard(_ name: String, _ value: String, _ unit: String) -> some View {
         VStack(spacing: 4) {
-            Text(value).font(.title3.bold()).monospacedDigit()
-            Text("\(name) (\(unit))").font(.caption).foregroundColor(.secondary)
+            Text(value)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(Theme.ink)
+                .monospacedDigit()
+            Text("\(name) (\(unit))")
+                .font(.system(size: 11))
+                .foregroundColor(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Color(UIColor.secondarySystemGroupedBackground)))
+        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.fill))
     }
 
     private func toggleRecord() {
