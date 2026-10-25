@@ -104,18 +104,22 @@ struct WeightListView: View {
     private var skeleton: some View {
         VStack(spacing: 14) {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Theme.brandGradient)
+                .fill(Theme.card)
                 .frame(height: 190)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Theme.hairline, lineWidth: 0.5)
+                )
                 .overlay(
                     VStack(alignment: .leading, spacing: 10) {
                         Text("正在同步最新记录…")
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.9))
+                            .font(.system(size: 12))
+                            .foregroundColor(Theme.inkTertiary)
                         Text("--")
-                            .font(.system(size: 46, weight: .bold, design: .rounded))
-                            .foregroundColor(.white.opacity(0.65))
+                            .font(.system(size: 46, weight: .medium))
+                            .foregroundColor(Theme.ink.opacity(0.25))
                     }
-                    .padding(22),
+                    .padding(20),
                     alignment: .leading
                 )
             ForEach(0..<3) { _ in
@@ -149,25 +153,21 @@ struct WeightListView: View {
     }
 
     private var emptyView: some View {
-        VStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(Theme.brandGradient)
-                    .frame(width: 96, height: 96)
-                    .opacity(0.15)
-                Image(systemName: "scalemass")
-                    .font(.system(size: 42))
-                    .foregroundColor(Theme.brandDeep)
-            }
+        VStack(spacing: 14) {
+            Image(systemName: "scalemass")
+                .font(.system(size: 34, weight: .light))
+                .foregroundColor(Theme.inkTertiary)
             Text("还没有体重记录")
-                .font(.headline)
-            Text("点下方「记录体重」记第一条，或到「我的」从 Excel 导入历史数据")
-                .font(.footnote)
-                .foregroundColor(.secondary)
+                .font(.system(size: 17, weight: .medium))
+                .foregroundColor(Theme.ink)
+            Text("记下第一笔，之后就能看到趋势、预测和每周小结；\n也可以在「我的」里从 Excel 导入历史数据")
+                .font(.system(size: 13))
+                .foregroundColor(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
+                .lineSpacing(3)
+                .padding(.horizontal, 36)
         }
-        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - 主列表
@@ -179,15 +179,9 @@ struct WeightListView: View {
                 Section { celebrationCard }
             }
 
-            // 渐变大卡片（全宽，无分组边距）；没有记录时换成引导卡
+            // 概览卡（白卡 + 细分割线）
             Section {
-                if state.weights.isEmpty && !state.isLoading {
-                    emptyCard
-                } else {
-                    OverviewCard(latest: latest, weights: state.weights, user: state.user)
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                }
+                OverviewCard(latest: latest, weights: state.weights, user: state.user)
             }
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
@@ -293,40 +287,6 @@ struct WeightListView: View {
     private var reachedTarget: Bool {
         guard let t = state.user?.target_kg, t > 0, let cur = latest?.kg else { return false }
         return cur <= t
-    }
-
-    private var emptyCard: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "scalemass")
-                .font(.system(size: 34))
-                .foregroundColor(.white.opacity(0.95))
-            Text("还没有体重记录")
-                .font(.headline)
-                .foregroundColor(.white)
-            Text("站上体重秤记下第一笔，之后就能看到趋势、预测和每周小结")
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.9))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-            Button {
-                Haptics.tap()
-                showAdd = true
-            } label: {
-                Text("记录第一次体重")
-                    .font(.subheadline.bold())
-                    .foregroundColor(Theme.brandDeep)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(Color.white)
-                    .clipShape(Capsule())
-            }
-            .padding(.top, 2)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 26)
-        .background(Theme.brandGradient)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .padding(16)
     }
 
     private var celebrationCard: some View {
@@ -554,65 +514,86 @@ struct OverviewCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // 顶部标签行
+            // 顶部：日期 + BMI
             HStack {
-                Text(latest?.chineseDate ?? "当前体重")
-                    .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.9))
+                Text(latest?.chineseDate ?? "还没有记录")
+                    .font(.system(size: 12))
+                    .foregroundColor(Theme.inkTertiary)
                 Spacer()
                 if let bmi = currentBmi {
-                    Theme.pill("BMI \(String(format: "%.1f", bmi)) · \(BMI.level(bmi).rawValue)")
+                    Text("BMI \(String(format: "%.1f", bmi)) · \(BMI.level(bmi).rawValue)")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Theme.inkSecondary)
                 }
             }
 
             // 大号体重
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text(latest.map { String(format: "%.1f", $0.kg) } ?? "--")
-                    .font(.system(size: 56, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                    .font(.system(size: 46, weight: .medium))
+                    .foregroundColor(Theme.ink)
                     .monospacedDigit()
                 Text("kg")
-                    .font(.headline)
-                    .foregroundColor(.white.opacity(0.85))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(Theme.inkTertiary)
                 Spacer()
             }
-            .padding(.top, 4)
+            .padding(.top, 6)
 
-            // 已减标签
-            if lostKg > 0.05 {
+            // 较上次
+            if let d = deltaFromLast {
                 HStack(spacing: 6) {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.caption)
-                    Text("已减 \(String(format: "%.1f", lostKg)) kg")
-                        .font(.subheadline.bold())
+                    Image(systemName: d <= 0 ? "arrow.down.right" : "arrow.up.right")
+                        .font(.system(size: 10, weight: .semibold))
+                    Text(String(format: "%.1f kg · 较上次", abs(d)))
+                        .font(.system(size: 12))
                 }
-                .foregroundColor(.white)
-                .padding(.top, 8)
+                .foregroundColor(d <= 0 ? Theme.success : Theme.warning)
+                .padding(.top, 4)
             }
 
-            // 底部三格：起始 / 目标 / 已减
+            Rectangle()
+                .fill(Theme.hairline)
+                .frame(height: 0.5)
+                .padding(.vertical, 14)
+
+            // 底部三格
             HStack(spacing: 0) {
                 miniStat("起始", startRecord?.kg)
                 miniStat("目标", user?.target_kg)
-                miniStat("已减", lostKg, signed: true)
+                miniStat("已减", lostKg, signed: false)
             }
-            .padding(.top, 16)
         }
-        .padding(22)
-        .background(Theme.brandGradient)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Theme.card)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Theme.hairline, lineWidth: 0.5)
+        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+    }
+
+    /// 与上一条记录的差值（同一天覆盖后仍能反映最近两天变化）
+    private var deltaFromLast: Double? {
+        let sorted = weights.sorted { $0.date < $1.date }
+        guard sorted.count >= 2 else { return nil }
+        return sorted[sorted.count - 1].kg - sorted[sorted.count - 2].kg
     }
 
     private func miniStat(_ title: String, _ v: Double?, signed: Bool = false) -> some View {
-        VStack(spacing: 3) {
-            Text(v == nil ? "—" : String(format: signed ? "%+.1f" : "%.1f", v!))
-                .font(.title3.bold())
-                .foregroundColor(.white)
-                .monospacedDigit()
+        VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.8))
+                .font(.system(size: 11))
+                .foregroundColor(Theme.inkTertiary)
+            Text(v == nil ? "—" : String(format: signed ? "%+.1f" : "%.1f", v!))
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(Theme.ink)
+                .monospacedDigit()
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

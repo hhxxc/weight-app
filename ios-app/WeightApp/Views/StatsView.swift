@@ -183,54 +183,72 @@ struct StatsView: View {
 
     private func sectionHeader(_ title: String, icon: String) -> some View {
         Label(title, systemImage: icon)
-            .font(.subheadline.weight(.semibold))
-            .foregroundColor(Theme.brandDeep)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundColor(Theme.inkTertiary)
             .textCase(nil)
     }
 
     private func overviewCard(_ s: APIClient.StatsResponse) -> some View {
         let w = s.weight
         return VStack(alignment: .leading, spacing: 0) {
-            Text("累计已减")
-                .font(.subheadline)
-                .foregroundColor(.white.opacity(0.9))
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(String(format: "%.1f", w.lost_kg ?? 0))
-                    .font(.system(size: 44, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                Text("kg")
-                    .font(.headline)
-                    .foregroundColor(.white.opacity(0.85))
+            HStack {
+                Text("累计已减")
+                    .font(.system(size: 12))
+                    .foregroundColor(Theme.inkTertiary)
                 Spacer()
                 if let bmi = w.bmi, !(w.bmi_category ?? "").isEmpty {
-                    Theme.pill("BMI \(String(format: "%.1f", bmi)) · \(w.bmi_category ?? "")")
+                    Text("BMI \(String(format: "%.1f", bmi)) · \(w.bmi_category ?? "")")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Theme.inkSecondary)
                 }
             }
-            .padding(.top, 4)
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text(String(format: "%.1f", w.lost_kg ?? 0))
+                    .font(.system(size: 44, weight: .medium))
+                    .foregroundColor(Theme.ink)
+                    .monospacedDigit()
+                Text("kg")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(Theme.inkTertiary)
+                Spacer()
+            }
+            .padding(.top, 6)
+
+            Rectangle()
+                .fill(Theme.hairline)
+                .frame(height: 0.5)
+                .padding(.vertical, 14)
 
             HStack(spacing: 0) {
                 miniStat("起始", w.start_kg)
                 miniStat("当前", w.current_kg)
                 miniStat("目标", w.target_kg)
             }
-            .padding(.top, 16)
         }
-        .padding(22)
-        .background(Theme.brandGradient)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Theme.card)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Theme.hairline, lineWidth: 0.5)
+        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
     }
 
     private func miniStat(_ title: String, _ v: Double?) -> some View {
-        VStack(spacing: 3) {
-            Text(v == nil ? "—" : String(format: "%.1f", v!))
-                .font(.title3.bold())
-                .foregroundColor(.white)
-                .monospacedDigit()
+        VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.8))
+                .font(.system(size: 11))
+                .foregroundColor(Theme.inkTertiary)
+            Text(v == nil ? "—" : String(format: "%.1f", v!))
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(Theme.ink)
+                .monospacedDigit()
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func calorieStat(_ title: String, _ v: Double) -> some View {

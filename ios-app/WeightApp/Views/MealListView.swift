@@ -44,7 +44,8 @@ struct MealListView: View {
             if let target = kcalTarget, target > 0 {
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text("\(Int(dayTotal.kcal.rounded()))")
-                        .font(.title3.bold())
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundColor(Theme.ink)
                         .monospacedDigit()
                     Text("/ \(Int(target)) 千卡\(state.user?.isKcalTargetCustom == true ? "" : " · 自动")")
                         .font(.caption)
@@ -193,7 +194,7 @@ struct MealListView: View {
             .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(selected ? Theme.brandDeep : (today ? Theme.brandBlue.opacity(0.10) : Color.clear))
+                    .fill(selected ? Theme.ink : (today ? Theme.ink.opacity(0.05) : Color.clear))
             )
         }
         .buttonStyle(.plain)
@@ -214,7 +215,7 @@ struct MealListView: View {
     }
 
     private func dotColor(kcal: Double?, selected: Bool) -> Color {
-        if selected { return Color.white.opacity(0.9) }
+        if selected { return Color.white.opacity(0.85) }
         guard let k = kcal, k > 0 else { return Color.clear }
         if let target = kcalTarget, target > 0, k > target { return Theme.warning }
         return Theme.brandBlue
@@ -412,10 +413,11 @@ struct MealListView: View {
         VStack(spacing: 10) {
             Button { showFoodRecognize = true } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: "camera.fill")
+                    Image(systemName: "camera")
+                        .font(.system(size: 15, weight: .medium))
                     Text("拍照记饮食")
+                        .font(.system(size: 15, weight: .medium))
                 }
-                .font(.headline)
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -438,15 +440,17 @@ struct MealListView: View {
 
     private func secondaryButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: icon).font(.subheadline)
-                Text(title).font(.caption2)
+            VStack(spacing: 5) {
+                Image(systemName: icon).font(.system(size: 15))
+                Text(title).font(.system(size: 11))
             }
-            .foregroundColor(Theme.brandDeep)
+            .foregroundColor(Theme.inkSecondary)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 9)
-            .background(Theme.brandBlue.opacity(0.08))
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Theme.hairline, lineWidth: 0.5)
+            )
         }
     }
 
