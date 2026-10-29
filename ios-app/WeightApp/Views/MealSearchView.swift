@@ -51,7 +51,7 @@ struct MealSearchView: View {
                         }
                     }
                     .listStyle(.plain)
-                    .background(Theme.canvas.ignoresSafeArea())
+                    .background(Theme.canvas)
                 }
 
                 if let error {

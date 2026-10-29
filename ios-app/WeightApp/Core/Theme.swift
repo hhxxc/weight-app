@@ -58,13 +58,13 @@ enum Theme {
             : UIColor(red: 0.965, green: 0.953, blue: 0.933, alpha: 1.0)
     })
 
-    /// 统一的卡片容器：圆角 20 + 白底 + 轻阴影
+    /// 统一的卡片容器：圆角 22 + 白底 + 轻阴影
     static func card<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         content()
-            .padding(18)
+            .padding(22)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .fill(card)
             )
             .cardShadow()

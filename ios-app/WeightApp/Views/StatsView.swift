@@ -163,7 +163,7 @@ struct StatsView: View {
             .listRowBackground(Theme.adviceBackground)
         }
         .listStyle(.insetGrouped)
-            .background(Theme.canvas.ignoresSafeArea())
+            .background(Theme.canvas)
     }
 
     private func load() async {

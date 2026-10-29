@@ -19,7 +19,7 @@ struct LogView: View {
             }
         }
         .listStyle(.plain)
-                    .background(Theme.canvas.ignoresSafeArea())
+                    .background(Theme.canvas)
         .navigationTitle("运行日志")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
