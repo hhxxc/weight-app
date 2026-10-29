@@ -64,6 +64,7 @@ struct FrequentMealsView: View {
                         }
                     }
                     .listStyle(.insetGrouped)
+            .background(Theme.canvas.ignoresSafeArea())
                 }
             }
             .navigationTitle("常吃食物")

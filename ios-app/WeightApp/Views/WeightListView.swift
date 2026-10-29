@@ -181,47 +181,20 @@ struct WeightListView: View {
                 Section { celebrationCard }
             }
 
-            // 概览卡（白卡 + 细分割线）
+            // 英雄卡：体重 + 进度环 + 迷你趋势（一屏抓重点）
             Section {
-                OverviewCard(latest: latest, weights: state.weights, user: state.user)
+                OverviewCard(latest: latest, weights: state.weights, user: state.user, forecast: forecast)
             }
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
 
-            // 今日饮食预算（一眼知道还能吃多少）
+            // 今日摄入 + 三项统计
             Section {
                 todayMealCard
+                statsRow
             }
-
-            // 进度预测（有目标体重且记录足够时才出现）
-            if let f = forecast {
-                Section {
-                    forecastCard(f)
-                }
-            }
-
-            // 趋势图（内嵌小图）
-            if state.weights.count >= 2 {
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("体重趋势")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(Theme.ink)
-                            Spacer()
-                            Text("\(String(format: "%.1f", state.sortedAsc.first?.kg ?? 0)) → \(String(format: "%.1f", state.sortedAsc.last?.kg ?? 0))")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        TrendChartView(weights: state.sortedAsc,
-                                       height: 150,
-                                       showDetail: false,
-                                       targetKg: state.user?.target_kg,
-                                       showAverage: true)
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
 
             // 历史记录：按月分组，每月一行摘要
             ForEach(Array(monthGroups.prefix(visibleMonthCount))) { g in
@@ -266,6 +239,7 @@ struct WeightListView: View {
         }
         .listStyle(.insetGrouped)
         .listRowSeparatorTint(Theme.hairline)
+        .background(Theme.canvas.ignoresSafeArea())
         .refreshable { await state.refreshWeights() }
     }
 
@@ -329,22 +303,20 @@ struct WeightListView: View {
     }
 
     // MARK: - 今日饮食
+
     private var todayMealCard: some View {
         let target = state.user?.kcalTarget(currentKg: state.sortedDesc.first?.kg)
         let kcal = state.todayKcal
 
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
-                Image(systemName: "fork.knife")
-                    .font(.caption)
-                    .foregroundColor(Theme.brandDeep)
-                Text("今日饮食")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(Theme.brandDeep)
+                Text("今日摄入")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(Theme.ink)
                 if state.todayKcalLoaded {
                     Text("\(state.todayMealCount) 条")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 11))
+                        .foregroundColor(Theme.inkTertiary)
                 }
                 Spacer()
                 Menu {
@@ -361,42 +333,136 @@ struct WeightListView: View {
                         Label("手动记录", systemImage: "square.and.pencil")
                     }
                 } label: {
-                    Label("记一笔", systemImage: "plus.circle.fill")
-                        .font(.caption.bold())
-                        .foregroundColor(Theme.brandDeep)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Theme.brandBlue.opacity(0.12))
-                        .clipShape(Capsule())
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text("记一笔")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundColor(Theme.brandDeep)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 6)
+                    .background(Theme.fill)
+                    .clipShape(Capsule())
                 }
             }
 
             if !state.todayKcalLoaded {
                 Text("正在读取今日记录…")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 12))
+                    .foregroundColor(Theme.inkTertiary)
             } else if let t = target, t > 0 {
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text("\(Int(kcal.rounded()))")
-                        .font(.title3.bold())
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundColor(Theme.ink)
                         .monospacedDigit()
                     Text("/ \(Int(t)) 千卡")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 11))
+                        .foregroundColor(Theme.inkTertiary)
                     Spacer()
                     Text(kcal > t ? "超出 \(Int((kcal - t).rounded()))" : "还剩 \(Int((t - kcal).rounded()))")
-                        .font(.caption.bold())
-                        .foregroundColor(kcal > t ? Theme.danger : Theme.success)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(kcal > t ? Theme.warning : Theme.success)
+                        .monospacedDigit()
                 }
                 ProgressView(value: min(1, max(0, kcal / t)))
-                    .tint(kcal > t ? Theme.danger : Theme.brandBlue)
+                    .tint(kcal > t ? Theme.warning : Theme.brandDeep)
             } else {
                 Text("还没设置每日热量目标，去「我的 → 个人资料」填一个吧")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 12))
+                    .foregroundColor(Theme.inkTertiary)
             }
         }
-        .padding(.vertical, 2)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Theme.card)
+        )
+        .cardShadow()
+        .padding(.horizontal, 16)
+        .padding(.vertical, 5)
+    }
+
+    // MARK: - 三项统计
+
+    private var statsRow: some View {
+        let monthKg = monthChangeKg
+        return HStack(spacing: 0) {
+            statsItem("连续", "\(streakDays)", "天")
+            Rectangle().fill(Theme.hairline).frame(width: 0.5, height: 26)
+            statsItem("本月已减", monthKg.map { String(format: "%.1f", $0) } ?? "—", "kg")
+            Rectangle().fill(Theme.hairline).frame(width: 0.5, height: 26)
+            statsItem("本月记录", "\(monthRecordDays)", "天")
+        }
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Theme.card)
+        )
+        .cardShadow()
+        .padding(.horizontal, 16)
+        .padding(.vertical, 5)
+    }
+
+    private func statsItem(_ title: String, _ value: String, _ unit: String) -> some View {
+        VStack(spacing: 3) {
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundColor(Theme.ink)
+                    .monospacedDigit()
+                Text(unit)
+                    .font(.system(size: 10))
+                    .foregroundColor(Theme.inkTertiary)
+            }
+            Text(title)
+                .font(.system(size: 10))
+                .foregroundColor(Theme.inkTertiary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// 本月变化（本月均值 − 上月均值，均值不存在时用首尾差）
+    private var monthChangeKg: Double? {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM"
+        let thisKey = fmt.string(from: Date())
+        let lastKey = {
+            let d = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
+            return fmt.string(from: d)
+        }()
+        let thisVals = state.weights.filter { $0.date.hasPrefix(thisKey) }.map { $0.kg }
+        let lastVals = state.weights.filter { $0.date.hasPrefix(lastKey) }.map { $0.kg }
+        guard !thisVals.isEmpty, !lastVals.isEmpty else { return nil }
+        return (thisVals.reduce(0, +) / Double(thisVals.count))
+            - (lastVals.reduce(0, +) / Double(lastVals.count))
+    }
+
+    /// 本月记录天数
+    private var monthRecordDays: Int {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM"
+        let key = fmt.string(from: Date())
+        return state.weights.filter { $0.date.hasPrefix(key) }.count
+    }
+
+    /// 连续记录天数（从今天或昨天往回数）
+    private var streakDays: Int {
+        let fmt = WeightRecord.dateFormatter
+        let dates = Set(state.weights.map { $0.date })
+        guard !dates.isEmpty else { return 0 }
+        var day = Calendar.current.startOfDay(for: Date())
+        if !dates.contains(fmt.string(from: day)) {
+            guard let prev = Calendar.current.date(byAdding: .day, value: -1, to: day),
+                  dates.contains(fmt.string(from: prev)) else { return 0 }
+            day = prev
+        }
+        var count = 0
+        while dates.contains(fmt.string(from: day)) {
+            count += 1
+            guard let prev = Calendar.current.date(byAdding: .day, value: -1, to: day) else { break }
+            day = prev
+        }
+        return count
     }
 
     // MARK: - 预测卡片
@@ -513,11 +579,12 @@ struct WeightListView: View {
     }
 }
 
-/// 概览卡片：最新体重、BMI、目标进度（蓝青渐变品牌卡）
+/// 英雄卡：大号体重 + 进度环 + 迷你趋势（暖色极简）
 struct OverviewCard: View {
     let latest: WeightRecord?
     let weights: [WeightRecord]
     let user: UserProfile?
+    var forecast: TrendAnalysis.Forecast? = nil
 
     private var currentBmi: Double? {
         guard let l = latest, let h = user?.height_cm else { return nil }
@@ -533,68 +600,128 @@ struct OverviewCard: View {
         return first.kg - l.kg
     }
 
+    /// 减重进度 0...1（已减 / 需减）
+    private var progress: Double {
+        guard let start = startRecord?.kg, let target = user?.target_kg, start > target else { return 0 }
+        return max(0, min(1, lostKg / (start - target)))
+    }
+
+    private var remainingKg: Double? {
+        guard let target = user?.target_kg, let cur = latest?.kg else { return nil }
+        return cur - target
+    }
+
+    /// 最近几次体重（迷你柱状图用）
+    private var last7: [Double] {
+        Array(weights.suffix(7).map { $0.kg })
+    }
+
+    private var barsDateRange: (String, String)? {
+        let recent = Array(weights.suffix(7))
+        guard recent.count >= 2 else { return nil }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "zh_CN")
+        f.dateFormat = "M/d"
+        func short(_ s: String) -> String {
+            (WeightRecord.dateFormatter.date(from: s)).map { f.string(from: $0) } ?? s
+        }
+        return (short(recent.first!.date), short(recent.last!.date))
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // 顶部：日期 + BMI
+            // 顶部：日期 + BMI 胶囊
             HStack {
                 Text(latest?.chineseDate ?? "还没有记录")
-                    .font(.system(size: 12))
+                    .font(.system(size: 11))
                     .foregroundColor(Theme.inkTertiary)
                 Spacer()
                 if let bmi = currentBmi {
-                    Text("BMI \(String(format: "%.1f", bmi)) · \(BMI.level(bmi).rawValue)")
+                    Text("BMI \(String(format: "%.1f", bmi))")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(Theme.inkSecondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Theme.fill)
+                        .clipShape(Capsule())
                 }
             }
 
-            // 大号体重
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text(latest.map { String(format: "%.1f", $0.kg) } ?? "--")
-                    .font(.system(size: 46, weight: .medium))
-                    .tracking(-0.8)
-                    .foregroundColor(Theme.ink)
-                    .monospacedDigit()
-                Text("kg")
-                    .font(.system(size: 13, weight: .medium))
+            // 大数字 + 进度环
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(latest.map { String(format: "%.1f", $0.kg) } ?? "--")
+                            .font(.system(size: 52, weight: .medium))
+                            .tracking(-1.2)
+                            .foregroundColor(Theme.ink)
+                            .monospacedDigit()
+                        Text("kg")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(Theme.inkTertiary)
+                    }
+                    if let d = deltaFromLast {
+                        HStack(spacing: 5) {
+                            Image(systemName: d <= 0 ? "arrow.down.right" : "arrow.up.right")
+                                .font(.system(size: 10, weight: .semibold))
+                            Text(String(format: "%.1f kg", abs(d)))
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        .foregroundColor(d <= 0 ? Theme.success : Theme.warning)
+                    }
+                    if let rem = remainingKg {
+                        Text(rem > 0 ? String(format: "距目标 %.1f kg", rem) : "已达成目标")
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.inkTertiary)
+                            .padding(.top, 1)
+                    }
+                }
+                Spacer(minLength: 8)
+                ProgressRing(progress: progress)
+            }
+            .padding(.top, 12)
+
+            // 迷你趋势（最近几次）
+            if !last7.isEmpty {
+                Rectangle()
+                    .fill(Theme.hairline)
+                    .frame(height: 0.5)
+                    .padding(.vertical, 14)
+
+                MiniBars(values: last7)
+
+                if let r = barsDateRange {
+                    HStack {
+                        Text(r.0)
+                        Spacer()
+                        Text("近 \(last7.count) 次")
+                        Spacer()
+                        Text(r.1)
+                    }
+                    .font(.system(size: 9))
                     .foregroundColor(Theme.inkTertiary)
-                Spacer()
-            }
-            .padding(.top, 6)
-
-            // 较上次
-            if let d = deltaFromLast {
-                HStack(spacing: 6) {
-                    Image(systemName: d <= 0 ? "arrow.down.right" : "arrow.up.right")
-                        .font(.system(size: 10, weight: .semibold))
-                    Text(String(format: "%.1f kg · 较上次", abs(d)))
-                        .font(.system(size: 12))
+                    .padding(.top, 6)
                 }
-                .foregroundColor(d <= 0 ? Theme.success : Theme.warning)
-                .padding(.top, 4)
             }
 
-            Rectangle()
-                .fill(Theme.hairline)
-                .frame(height: 0.5)
-                .padding(.vertical, 14)
-
-            // 底部三格
-            HStack(spacing: 0) {
-                miniStat("起始", startRecord?.kg)
-                miniStat("目标", user?.target_kg)
-                miniStat("已减", lostKg, signed: false)
+            // 预计达标（一行小字）
+            if let f = forecast, let date = f.targetDate {
+                HStack(spacing: 5) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 10))
+                    Text("按当前速度，预计 \(dateString(date)) 达标")
+                        .font(.system(size: 11))
+                }
+                .foregroundColor(Theme.brandDeep)
+                .padding(.top, 12)
             }
         }
         .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(Theme.card)
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Theme.hairline, lineWidth: 0.5)
-        )
+        .cardShadow()
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
     }
@@ -606,16 +733,10 @@ struct OverviewCard: View {
         return sorted[sorted.count - 1].kg - sorted[sorted.count - 2].kg
     }
 
-    private func miniStat(_ title: String, _ v: Double?, signed: Bool = false) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(.system(size: 11))
-                .foregroundColor(Theme.inkTertiary)
-            Text(v == nil ? "—" : String(format: signed ? "%+.1f" : "%.1f", v!))
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(Theme.ink)
-                .monospacedDigit()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    private func dateString(_ d: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "zh_CN")
+        f.dateFormat = "M月d日"
+        return f.string(from: d)
     }
 }

@@ -61,6 +61,7 @@ struct FamilyView: View {
                     }
                 }
                 .listStyle(.insetGrouped)
+            .background(Theme.canvas.ignoresSafeArea())
             }
         }
         .navigationTitle("家庭管理")

@@ -1,7 +1,8 @@
 import SwiftUI
+import UIKit
 
-/// 全局主题：极简白（大字号 + 留白 + 细分割线 + 单一强调色）
-/// 色值全部随深浅色模式自适应，避免深色下近黑文字看不见。
+/// 全局主题：暖色极简（暖纸底 + 白卡 + 细线 + 深青绿强调）
+/// 色值随深浅色模式自适应。
 enum Theme {
     // MARK: - 中性色板（动态）
 
@@ -11,65 +12,62 @@ enum Theme {
         })
     }
 
-    /// 主文字
-    static let ink = dynamic(light: 0x111114, dark: 0xF2F2F7)
+    /// 主文字（暖调近黑）
+    static let ink = dynamic(light: 0x23201C, dark: 0xF3EFE9)
     /// 次级文字
-    static let inkSecondary = dynamic(light: 0x6B6B73, dark: 0xA1A1AA)
+    static let inkSecondary = dynamic(light: 0x7A736B, dark: 0xB0A79C)
     /// 辅助说明
-    static let inkTertiary = dynamic(light: 0x9A9AA2, dark: 0x6E6E76)
+    static let inkTertiary = dynamic(light: 0xA39A90, dark: 0x7D746B)
     /// 细分割线
-    static let hairline = dynamic(light: 0xE8E8ED, dark: 0x2C2C2E)
-    /// 页面底色
-    static let canvas = dynamic(light: 0xF6F6F8, dark: 0x000000)
+    static let hairline = dynamic(light: 0xEAE4DB, dark: 0x2E2A25)
+    /// 页面底色（暖纸）
+    static let canvas = dynamic(light: 0xF5F1EA, dark: 0x171512)
     /// 卡片底色
-    static let card = dynamic(light: 0xFFFFFF, dark: 0x1C1C1E)
+    static let card = dynamic(light: 0xFFFFFF, dark: 0x23201B)
     /// 极浅填充（进度条底、今日高亮）
-    static let fill = dynamic(light: 0xEFEFF2, dark: 0x2C2C2E)
+    static let fill = dynamic(light: 0xF0EBE3, dark: 0x2E2A25)
 
-    /// 实心块底色（黑按钮/头像底）：浅色近黑，深色改成 #3A3A3C，保证白字始终可读
-    static let solid = dynamic(light: 0x111114, dark: 0x3A3A3C)
+    /// 实心块底色（按钮/头像底）：浅色暖近黑，深色灰棕，保证白字可读
+    static let solid = dynamic(light: 0x23201C, dark: 0x4A443C)
 
-    /// 深色实心块（按钮/强调块），替代原来的蓝青渐变
+    /// 深色实心块（按钮/强调块）
     static var brandGradient: LinearGradient {
         LinearGradient(gradient: Gradient(colors: [solid, solid]),
                        startPoint: .top,
                        endPoint: .bottom)
     }
 
-    // 唯一强调色：低饱和深青，只用在数值和链接上（深色下提亮）
-    static let brandBlue = dynamic(light: 0x0A7EA4, dark: 0x5BC0DE)
+    // 强调色：深青绿，数值/链接/进度用
+    static let brandBlue = dynamic(light: 0x1F6F63, dark: 0x6FBFAE)
     static let brandCyan = brandBlue
     static let brandDeep = brandBlue
 
-    // 功能色
-    static let success = dynamic(light: 0x2E7D5B, dark: 0x4FBF8B)
-    static let warning = dynamic(light: 0xC77700, dark: 0xE0A64A)
-    static let danger = dynamic(light: 0xC0392B, dark: 0xE06C5F)
+    // 功能色（暖调）
+    static let success = dynamic(light: 0x2F7D6E, dark: 0x6FC2A8)
+    static let warning = dynamic(light: 0xB8794A, dark: 0xD9A46B)
+    static let danger = dynamic(light: 0xB5523F, dark: 0xE08573)
     static let textMuted = dynamic(light: 0x8E8E93, dark: 0x8E8E93)
 
     // 卡片背景
     static let cardBackground = Color(UIColor.secondarySystemGroupedBackground)
 
-    /// AI 建议卡背景：极浅中性底
+    /// AI 建议卡背景：极浅暖灰
     static let adviceBackground = Color(UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.12, green: 0.12, blue: 0.13, alpha: 1.0)
-            : UIColor(red: 0.965, green: 0.965, blue: 0.972, alpha: 1.0)
+            ? UIColor(red: 0.14, green: 0.13, blue: 0.11, alpha: 1.0)
+            : UIColor(red: 0.965, green: 0.953, blue: 0.933, alpha: 1.0)
     })
 
-    /// 统一的卡片容器样式：圆角 18 + 卡片底 + 0.5 细边
+    /// 统一的卡片容器：圆角 20 + 白底 + 轻阴影
     static func card<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         content()
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(card)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(hairline, lineWidth: 0.5)
-            )
+            .cardShadow()
     }
 
     /// 胶囊标签（中性底 + 深色字）
@@ -84,10 +82,18 @@ enum Theme {
     }
 }
 
-/// 卡片阴影修饰符（iOS 15 可用）——极简风不用阴影，保留空实现避免改动调用点
+/// 卡片阴影：暖调浅阴影，制造一点层次
 extension View {
     func cardShadow() -> some View {
-        self
+        self.shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 4)
+    }
+}
+
+extension Theme {
+    /// 全局表格外观：列表背景透明，让暖纸底色透出来；分隔线统一用主题细线
+    static func applyAppearance() {
+        UITableView.appearance().backgroundColor = .clear
+        UITableView.appearance().separatorColor = UIColor(hex: 0xEAE4DB)
     }
 }
 

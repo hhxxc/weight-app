@@ -118,6 +118,7 @@ struct ProfileView: View {
                     }
                 }
             }
+            .background(Theme.canvas.ignoresSafeArea())
             .navigationTitle("我的")
             .sheet(isPresented: $showImport) {
                 ImportView()

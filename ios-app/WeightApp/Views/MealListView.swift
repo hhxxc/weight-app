@@ -300,6 +300,7 @@ struct MealListView: View {
                     }
                     .listStyle(.insetGrouped)
                     .listRowSeparatorTint(Theme.hairline)
+        .background(Theme.canvas.ignoresSafeArea())
                     .refreshable { await state.refreshMeals(date: dateStr) }
                 }
 
